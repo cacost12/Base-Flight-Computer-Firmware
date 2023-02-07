@@ -30,12 +30,17 @@ LIB_DIR = ../../lib
 # Microcontroller Init Directory
 INIT_DIR = ../../init
 
+# Module Directory
+MOD_DIR = ../../mod
+
 ######################################
 # source
 ######################################
 # C sources
 C_SOURCES =                                                         \
 main.c                                                              \
+$(INIT_DIR)/init.c                                                  \
+$(MOD_DIR)/led/led.c                                                \
 $(INIT_DIR)/config/Src/stm32h7xx_it.c                               \
 $(INIT_DIR)/config/Src/stm32h7xx_hal_msp.c                          \
 $(INIT_DIR)/config/Src/system_stm32h7xx.c                           \
@@ -103,10 +108,12 @@ MCU = $(CPU) -mthumb $(FPU) $(FLOAT-ABI)
 AS_DEFS = 
 
 # C defines
-C_DEFS =         \
--DUSE_HAL_DRIVER \
--DSTM32H750xx    \
--DA0007_REV1
+C_DEFS =               \
+-DUSE_HAL_DRIVER       \
+-DSTM32H750xx          \
+-DA0007_REV1           \
+-DFLIGHT_COMPUTER_LITE \
+-DBLINK
 
 
 # AS includes
@@ -118,6 +125,7 @@ C_INCLUDES =                                           \
 -I$(LIB_DIR)                                           \
 -I$(INIT_DIR)                                          \
 -I$(INIT_DIR)/config/Inc                               \
+-I$(MOD_DIR)/led                                       \
 -I$(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Inc          \
 -I$(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy   \
 -I$(LIB_DIR)/Drivers/CMSIS/Device/ST/STM32H7xx/Include \
