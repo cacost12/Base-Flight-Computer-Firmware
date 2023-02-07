@@ -1,0 +1,2516 @@
+ARM GAS  /tmp/ccY8F0GP.s 			page 1
+
+
+   1              		.cpu cortex-m7
+   2              		.arch armv7e-m
+   3              		.fpu fpv5-d16
+   4              		.eabi_attribute 28, 1
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 1
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.file	"baro.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.file 1 "../../../mod/baro/baro.c"
+  19              		.section	.text.bytes_to_uint16_t,"ax",%progbits
+  20              		.align	1
+  21              		.syntax unified
+  22              		.thumb
+  23              		.thumb_func
+  25              	bytes_to_uint16_t:
+  26              	.LVL0:
+  27              	.LFB150:
+   1:../../../mod/baro/baro.c **** /*******************************************************************************
+   2:../../../mod/baro/baro.c **** *
+   3:../../../mod/baro/baro.c **** * FILE: 
+   4:../../../mod/baro/baro.c **** * 		baro.c
+   5:../../../mod/baro/baro.c **** *
+   6:../../../mod/baro/baro.c **** * DESCRIPTION: 
+   7:../../../mod/baro/baro.c **** * 		Contains API functions for the barometric pressure sensor
+   8:../../../mod/baro/baro.c **** *
+   9:../../../mod/baro/baro.c **** *******************************************************************************/
+  10:../../../mod/baro/baro.c **** 
+  11:../../../mod/baro/baro.c **** 
+  12:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+  13:../../../mod/baro/baro.c ****  Standard Includes                                                                     
+  14:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+  15:../../../mod/baro/baro.c **** #include <stdbool.h>
+  16:../../../mod/baro/baro.c **** #include <string.h>
+  17:../../../mod/baro/baro.c **** #include <math.h>
+  18:../../../mod/baro/baro.c **** 
+  19:../../../mod/baro/baro.c **** 
+  20:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+  21:../../../mod/baro/baro.c ****  Project Includes                                                                     
+  22:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+  23:../../../mod/baro/baro.c **** #include "main.h"
+  24:../../../mod/baro/baro.c **** #include "sdr_pin_defines_A0002.h"
+  25:../../../mod/baro/baro.c **** #include "baro.h"
+  26:../../../mod/baro/baro.c **** 
+  27:../../../mod/baro/baro.c **** 
+  28:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+  29:../../../mod/baro/baro.c **** Global Variables  
+  30:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+  31:../../../mod/baro/baro.c **** 
+ARM GAS  /tmp/ccY8F0GP.s 			page 2
+
+
+  32:../../../mod/baro/baro.c **** /* Current Baro Sensor configuration */
+  33:../../../mod/baro/baro.c **** static BARO_CONFIG   baro_configuration;
+  34:../../../mod/baro/baro.c **** 
+  35:../../../mod/baro/baro.c **** /* Baro calibration coefficients for measurement compensation */
+  36:../../../mod/baro/baro.c **** static BARO_CAL_DATA baro_cal_data;
+  37:../../../mod/baro/baro.c **** 
+  38:../../../mod/baro/baro.c **** 
+  39:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+  40:../../../mod/baro/baro.c ****  Internal function prototypes 
+  41:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+  42:../../../mod/baro/baro.c **** 
+  43:../../../mod/baro/baro.c **** /* Converts two bytes to uint16_t format */
+  44:../../../mod/baro/baro.c **** static uint16_t bytes_to_uint16_t
+  45:../../../mod/baro/baro.c **** 	(
+  46:../../../mod/baro/baro.c **** 	uint8_t lsb_byte, /* In: Least significant byte */
+  47:../../../mod/baro/baro.c **** 	uint8_t msb_byte  /* In: Most significant byte  */
+  48:../../../mod/baro/baro.c **** 	);
+  49:../../../mod/baro/baro.c **** 
+  50:../../../mod/baro/baro.c **** /* Converts two bytes to int16_t format */
+  51:../../../mod/baro/baro.c **** static int16_t bytes_to_int16_t
+  52:../../../mod/baro/baro.c **** 	(
+  53:../../../mod/baro/baro.c **** 	uint8_t lsb_byte, /* In: Least significant byte */
+  54:../../../mod/baro/baro.c **** 	uint8_t msb_byte  /* In: Most significant byte  */
+  55:../../../mod/baro/baro.c **** 	);
+  56:../../../mod/baro/baro.c **** 
+  57:../../../mod/baro/baro.c **** /* Read from the baro's registers at a specified address  */
+  58:../../../mod/baro/baro.c **** static BARO_STATUS read_regs
+  59:../../../mod/baro/baro.c **** 	(
+  60:../../../mod/baro/baro.c **** 	uint8_t  reg_addr, /* In:  Register address            */
+  61:../../../mod/baro/baro.c **** 	uint8_t  num_regs, /* In:  Number of registers to read */
+  62:../../../mod/baro/baro.c **** 	uint8_t* pData     /* Out: Register contents           */
+  63:../../../mod/baro/baro.c **** 	);
+  64:../../../mod/baro/baro.c **** 
+  65:../../../mod/baro/baro.c **** 
+  66:../../../mod/baro/baro.c **** /* Write to one of the baro's registers at a specified address */
+  67:../../../mod/baro/baro.c **** static BARO_STATUS write_reg
+  68:../../../mod/baro/baro.c **** 	(
+  69:../../../mod/baro/baro.c **** 	uint8_t  reg_addr, /* In: Register address            */
+  70:../../../mod/baro/baro.c **** 	uint8_t  data      /* In: Register contents           */
+  71:../../../mod/baro/baro.c **** 	);
+  72:../../../mod/baro/baro.c **** 
+  73:../../../mod/baro/baro.c **** /* Load the compensation data from the baro sensor */
+  74:../../../mod/baro/baro.c **** static BARO_STATUS load_cal_data
+  75:../../../mod/baro/baro.c **** 	(
+  76:../../../mod/baro/baro.c **** 	void
+  77:../../../mod/baro/baro.c **** 	);
+  78:../../../mod/baro/baro.c **** 
+  79:../../../mod/baro/baro.c **** /* Apply the compensation formula to raw temperature readouts */
+  80:../../../mod/baro/baro.c **** static float temp_compensate
+  81:../../../mod/baro/baro.c **** 	(
+  82:../../../mod/baro/baro.c **** 	uint32_t raw_readout
+  83:../../../mod/baro/baro.c **** 	);
+  84:../../../mod/baro/baro.c **** 
+  85:../../../mod/baro/baro.c **** /* Apply the compensation formula to raw pressure readouts */
+  86:../../../mod/baro/baro.c **** static float press_compensate 
+  87:../../../mod/baro/baro.c **** 	(
+  88:../../../mod/baro/baro.c **** 	uint32_t raw_readout
+ARM GAS  /tmp/ccY8F0GP.s 			page 3
+
+
+  89:../../../mod/baro/baro.c **** 	);
+  90:../../../mod/baro/baro.c **** 
+  91:../../../mod/baro/baro.c **** 
+  92:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+  93:../../../mod/baro/baro.c ****  API Functions 
+  94:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+  95:../../../mod/baro/baro.c **** 
+  96:../../../mod/baro/baro.c **** 
+  97:../../../mod/baro/baro.c **** /*******************************************************************************
+  98:../../../mod/baro/baro.c **** *                                                                              *
+  99:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   * 
+ 100:../../../mod/baro/baro.c **** *       baro_init                                                              *
+ 101:../../../mod/baro/baro.c **** *                                                                              *
+ 102:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 * 
+ 103:../../../mod/baro/baro.c **** * 		Intialize the barometric pressure sensor                               *
+ 104:../../../mod/baro/baro.c **** *                                                                              *
+ 105:../../../mod/baro/baro.c **** *******************************************************************************/
+ 106:../../../mod/baro/baro.c **** BARO_STATUS baro_init
+ 107:../../../mod/baro/baro.c **** 	(
+ 108:../../../mod/baro/baro.c **** 	BARO_CONFIG* config_ptr
+ 109:../../../mod/baro/baro.c **** 	)
+ 110:../../../mod/baro/baro.c **** {
+ 111:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 112:../../../mod/baro/baro.c ****  Local variables  
+ 113:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 114:../../../mod/baro/baro.c **** BARO_STATUS       baro_status;    /* Status code from Baro API calls   */
+ 115:../../../mod/baro/baro.c **** uint8_t           baro_device_id; /* Baro device id                    */
+ 116:../../../mod/baro/baro.c **** uint8_t           baro_err_reg;   /* Contents of error register        */
+ 117:../../../mod/baro/baro.c **** float             init_temp;      /* Temperature read after init       */
+ 118:../../../mod/baro/baro.c **** 
+ 119:../../../mod/baro/baro.c **** 
+ 120:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 121:../../../mod/baro/baro.c ****  Initializations 
+ 122:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 123:../../../mod/baro/baro.c **** baro_status    = BARO_OK;
+ 124:../../../mod/baro/baro.c **** baro_device_id = 0;
+ 125:../../../mod/baro/baro.c **** baro_err_reg   = 0xFF;
+ 126:../../../mod/baro/baro.c **** init_temp      = 0;
+ 127:../../../mod/baro/baro.c **** 
+ 128:../../../mod/baro/baro.c **** 
+ 129:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 130:../../../mod/baro/baro.c ****  API Function Implementation 
+ 131:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 132:../../../mod/baro/baro.c **** 
+ 133:../../../mod/baro/baro.c **** /* Verify functional I2C connection to sensor */
+ 134:../../../mod/baro/baro.c **** baro_status = baro_get_device_id( &baro_device_id );
+ 135:../../../mod/baro/baro.c **** if      ( baro_status   != BARO_OK         )
+ 136:../../../mod/baro/baro.c **** 	{
+ 137:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 138:../../../mod/baro/baro.c **** 	}
+ 139:../../../mod/baro/baro.c **** else if ( baro_device_id != BMP390_DEVICE_ID &&
+ 140:../../../mod/baro/baro.c ****           baro_device_id != BMP388_DEVICE_ID )
+ 141:../../../mod/baro/baro.c **** 	{
+ 142:../../../mod/baro/baro.c **** 	return BARO_UNRECOGNIZED_CHIP_ID;
+ 143:../../../mod/baro/baro.c **** 	}
+ 144:../../../mod/baro/baro.c **** 
+ 145:../../../mod/baro/baro.c **** /* Check the Baro error register */
+ARM GAS  /tmp/ccY8F0GP.s 			page 4
+
+
+ 146:../../../mod/baro/baro.c **** baro_status = read_regs( BARO_REG_ERR_REG      , 
+ 147:../../../mod/baro/baro.c ****                          sizeof( baro_err_reg ), 
+ 148:../../../mod/baro/baro.c **** 						 &baro_err_reg );
+ 149:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 150:../../../mod/baro/baro.c **** 	{
+ 151:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 152:../../../mod/baro/baro.c **** 	}
+ 153:../../../mod/baro/baro.c **** else if ( baro_err_reg )
+ 154:../../../mod/baro/baro.c **** 	{
+ 155:../../../mod/baro/baro.c **** 	return BARO_ERROR;
+ 156:../../../mod/baro/baro.c **** 	}
+ 157:../../../mod/baro/baro.c **** 
+ 158:../../../mod/baro/baro.c **** /* Load the calibration coefficients */
+ 159:../../../mod/baro/baro.c **** baro_status = load_cal_data();
+ 160:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 161:../../../mod/baro/baro.c **** 	{
+ 162:../../../mod/baro/baro.c **** 	return BARO_CAL_ERROR;
+ 163:../../../mod/baro/baro.c **** 	}
+ 164:../../../mod/baro/baro.c **** 
+ 165:../../../mod/baro/baro.c **** /* Initialize the compensation temperature */
+ 166:../../../mod/baro/baro.c **** baro_status = baro_get_temp( &init_temp );
+ 167:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 168:../../../mod/baro/baro.c **** 	{ 
+ 169:../../../mod/baro/baro.c **** 	return baro_status;
+ 170:../../../mod/baro/baro.c **** 	}
+ 171:../../../mod/baro/baro.c **** 
+ 172:../../../mod/baro/baro.c **** /* Configure the sensor */
+ 173:../../../mod/baro/baro.c **** baro_status = baro_config( config_ptr );
+ 174:../../../mod/baro/baro.c **** return baro_status;
+ 175:../../../mod/baro/baro.c **** 
+ 176:../../../mod/baro/baro.c **** } /* baro_init */
+ 177:../../../mod/baro/baro.c **** 
+ 178:../../../mod/baro/baro.c **** 
+ 179:../../../mod/baro/baro.c **** /*******************************************************************************
+ 180:../../../mod/baro/baro.c **** *                                                                              *
+ 181:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   * 
+ 182:../../../mod/baro/baro.c **** *       baro_config                                                            *
+ 183:../../../mod/baro/baro.c **** *                                                                              *
+ 184:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 * 
+ 185:../../../mod/baro/baro.c **** * 		Configure the barometric pressure sensor                               *
+ 186:../../../mod/baro/baro.c **** *                                                                              *
+ 187:../../../mod/baro/baro.c **** *******************************************************************************/
+ 188:../../../mod/baro/baro.c **** BARO_STATUS baro_config
+ 189:../../../mod/baro/baro.c **** 	(
+ 190:../../../mod/baro/baro.c **** 	BARO_CONFIG* config_ptr
+ 191:../../../mod/baro/baro.c **** 	)
+ 192:../../../mod/baro/baro.c **** {
+ 193:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 194:../../../mod/baro/baro.c ****  Local variables  
+ 195:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 196:../../../mod/baro/baro.c **** BARO_STATUS   baro_status; /* Baro API call return codes                  */
+ 197:../../../mod/baro/baro.c **** uint8_t       pwr_ctrl;    /* Contents of PWR_CTRL register               */
+ 198:../../../mod/baro/baro.c **** uint8_t       osr;         /* Contents of OSR register                    */
+ 199:../../../mod/baro/baro.c **** uint8_t       odr;         /* Contents of ODR register                    */
+ 200:../../../mod/baro/baro.c **** uint8_t       iir;         /* Contents of CONFIG register (IIR Filter)    */
+ 201:../../../mod/baro/baro.c **** 
+ 202:../../../mod/baro/baro.c **** 
+ARM GAS  /tmp/ccY8F0GP.s 			page 5
+
+
+ 203:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 204:../../../mod/baro/baro.c ****  Initializations 
+ 205:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 206:../../../mod/baro/baro.c **** baro_status = BARO_OK;
+ 207:../../../mod/baro/baro.c **** pwr_ctrl    = 0;
+ 208:../../../mod/baro/baro.c **** osr         = 0;
+ 209:../../../mod/baro/baro.c **** odr         = 0;
+ 210:../../../mod/baro/baro.c **** iir         = 0;
+ 211:../../../mod/baro/baro.c **** 
+ 212:../../../mod/baro/baro.c **** 
+ 213:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 214:../../../mod/baro/baro.c ****  Extract Baro settings from config struct  
+ 215:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 216:../../../mod/baro/baro.c **** 
+ 217:../../../mod/baro/baro.c **** /* Set register contents */
+ 218:../../../mod/baro/baro.c **** pwr_ctrl |= config_ptr -> enable;                /* Enable sensors           */
+ 219:../../../mod/baro/baro.c **** pwr_ctrl |= config_ptr -> mode << 4;             /* Set operating mode       */
+ 220:../../../mod/baro/baro.c **** osr      |= config_ptr -> press_OSR_setting;     /* Pressure oversampling    */
+ 221:../../../mod/baro/baro.c **** osr      |= config_ptr -> temp_OSR_setting << 3; /* Temperature oversampling */
+ 222:../../../mod/baro/baro.c **** odr      |= config_ptr -> ODR_setting;           /* Sampling Frequency       */
+ 223:../../../mod/baro/baro.c **** iir      |= config_ptr -> IIR_setting;           /* IIR Filter Selection     */
+ 224:../../../mod/baro/baro.c **** 
+ 225:../../../mod/baro/baro.c **** /* Set global baro configuration */
+ 226:../../../mod/baro/baro.c **** baro_configuration.enable            = config_ptr -> enable;
+ 227:../../../mod/baro/baro.c **** baro_configuration.mode              = config_ptr -> mode;
+ 228:../../../mod/baro/baro.c **** baro_configuration.press_OSR_setting = config_ptr -> press_OSR_setting;
+ 229:../../../mod/baro/baro.c **** baro_configuration.temp_OSR_setting  = config_ptr -> temp_OSR_setting;
+ 230:../../../mod/baro/baro.c **** baro_configuration.ODR_setting       = config_ptr -> ODR_setting;
+ 231:../../../mod/baro/baro.c **** baro_configuration.IIR_setting       = config_ptr -> IIR_setting;
+ 232:../../../mod/baro/baro.c **** 
+ 233:../../../mod/baro/baro.c **** 
+ 234:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 235:../../../mod/baro/baro.c ****  API function implementation 
+ 236:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 237:../../../mod/baro/baro.c **** 
+ 238:../../../mod/baro/baro.c **** /* Write to the PWR_CTRL register -> Operating mode and enable sensors */
+ 239:../../../mod/baro/baro.c **** baro_status = write_reg( BARO_REG_PWR_CTRL, pwr_ctrl );
+ 240:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 241:../../../mod/baro/baro.c **** 	{
+ 242:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 243:../../../mod/baro/baro.c **** 	}
+ 244:../../../mod/baro/baro.c **** 
+ 245:../../../mod/baro/baro.c **** /* Write to the OSR register -> set the oversampling rate */
+ 246:../../../mod/baro/baro.c **** baro_status = write_reg( BARO_REG_OSR, osr );
+ 247:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 248:../../../mod/baro/baro.c **** 	{
+ 249:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 250:../../../mod/baro/baro.c **** 	}
+ 251:../../../mod/baro/baro.c **** 
+ 252:../../../mod/baro/baro.c **** /* Write to the ODR register -> set the sampling frequency */
+ 253:../../../mod/baro/baro.c **** baro_status = write_reg( BARO_REG_ODR, odr );
+ 254:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 255:../../../mod/baro/baro.c **** 	{
+ 256:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 257:../../../mod/baro/baro.c **** 	}
+ 258:../../../mod/baro/baro.c **** 
+ 259:../../../mod/baro/baro.c **** /* Write to the CONFIG register -> Configure the IIR filter */
+ARM GAS  /tmp/ccY8F0GP.s 			page 6
+
+
+ 260:../../../mod/baro/baro.c **** baro_status = write_reg( BARO_REG_CONFIG, iir );
+ 261:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 262:../../../mod/baro/baro.c **** 	{
+ 263:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 264:../../../mod/baro/baro.c **** 	}
+ 265:../../../mod/baro/baro.c **** 
+ 266:../../../mod/baro/baro.c **** /* Configuration complete */
+ 267:../../../mod/baro/baro.c **** return BARO_OK;
+ 268:../../../mod/baro/baro.c **** 
+ 269:../../../mod/baro/baro.c **** } /* baro_config */
+ 270:../../../mod/baro/baro.c **** 
+ 271:../../../mod/baro/baro.c **** 
+ 272:../../../mod/baro/baro.c **** /*******************************************************************************
+ 273:../../../mod/baro/baro.c **** *                                                                              *
+ 274:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   * 
+ 275:../../../mod/baro/baro.c **** * 		baro_get_device_id                                                     *
+ 276:../../../mod/baro/baro.c **** *                                                                              *
+ 277:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 * 
+ 278:../../../mod/baro/baro.c **** * 		Gets the device ID of the barometric pressure sensor, primarily used   *
+ 279:../../../mod/baro/baro.c **** *       to verify that the sensor can be accessed by the MCU                   *
+ 280:../../../mod/baro/baro.c **** *                                                                              *
+ 281:../../../mod/baro/baro.c **** *******************************************************************************/
+ 282:../../../mod/baro/baro.c **** BARO_STATUS baro_get_device_id
+ 283:../../../mod/baro/baro.c **** 	(
+ 284:../../../mod/baro/baro.c ****    	uint8_t* baro_id_ptr /* Out: Baro device id */ 
+ 285:../../../mod/baro/baro.c **** 	)
+ 286:../../../mod/baro/baro.c **** {
+ 287:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 288:../../../mod/baro/baro.c ****  Local Variables 
+ 289:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 290:../../../mod/baro/baro.c **** BARO_STATUS baro_status; /* Status codes returned from baro API calls */
+ 291:../../../mod/baro/baro.c **** 
+ 292:../../../mod/baro/baro.c **** 
+ 293:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 294:../../../mod/baro/baro.c ****  API Function implementation 
+ 295:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 296:../../../mod/baro/baro.c **** 
+ 297:../../../mod/baro/baro.c **** /* Read baro register with I2C */
+ 298:../../../mod/baro/baro.c **** baro_status = read_regs( BARO_REG_CHIP_ID, 
+ 299:../../../mod/baro/baro.c ****                          sizeof( uint8_t ), 
+ 300:../../../mod/baro/baro.c **** 						 baro_id_ptr );
+ 301:../../../mod/baro/baro.c **** return baro_status;
+ 302:../../../mod/baro/baro.c **** } /* baro_get_device_id */
+ 303:../../../mod/baro/baro.c **** 
+ 304:../../../mod/baro/baro.c **** 
+ 305:../../../mod/baro/baro.c **** /*******************************************************************************
+ 306:../../../mod/baro/baro.c **** *                                                                              *
+ 307:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   * 
+ 308:../../../mod/baro/baro.c **** * 		baro_get_pressure                                                      *
+ 309:../../../mod/baro/baro.c **** *                                                                              *
+ 310:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 * 
+ 311:../../../mod/baro/baro.c **** * 		retrieves a pressure reading from the sensor                           *
+ 312:../../../mod/baro/baro.c **** *                                                                              *
+ 313:../../../mod/baro/baro.c **** *******************************************************************************/
+ 314:../../../mod/baro/baro.c **** BARO_STATUS baro_get_pressure
+ 315:../../../mod/baro/baro.c **** 	(
+ 316:../../../mod/baro/baro.c ****     float* pressure_ptr  /* Out: Baro pressure */
+ARM GAS  /tmp/ccY8F0GP.s 			page 7
+
+
+ 317:../../../mod/baro/baro.c **** 	)
+ 318:../../../mod/baro/baro.c **** {
+ 319:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 320:../../../mod/baro/baro.c **** Local variables 
+ 321:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 322:../../../mod/baro/baro.c **** uint8_t     pressure_bytes[3]; /* Pressure raw readout bytes, LSB first   */
+ 323:../../../mod/baro/baro.c **** uint32_t    raw_pressure;      /* Pressure raw readout in uint32_t format */
+ 324:../../../mod/baro/baro.c **** float       comp_temp;         /* Compensation temperature                */
+ 325:../../../mod/baro/baro.c **** BARO_STATUS baro_status;       /* Return codes for baro API calls         */
+ 326:../../../mod/baro/baro.c **** 
+ 327:../../../mod/baro/baro.c **** 
+ 328:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 329:../../../mod/baro/baro.c **** Initializations
+ 330:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 331:../../../mod/baro/baro.c **** raw_pressure = 0;
+ 332:../../../mod/baro/baro.c **** comp_temp    = 0;
+ 333:../../../mod/baro/baro.c **** baro_status  = BARO_OK;
+ 334:../../../mod/baro/baro.c **** memset( &pressure_bytes[0], 0, sizeof( pressure_bytes ) );
+ 335:../../../mod/baro/baro.c **** 
+ 336:../../../mod/baro/baro.c **** 
+ 337:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 338:../../../mod/baro/baro.c **** API function implementation 
+ 339:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 340:../../../mod/baro/baro.c **** 
+ 341:../../../mod/baro/baro.c **** /* Read 3 consecutive pressure data registers */
+ 342:../../../mod/baro/baro.c **** baro_status = read_regs( BARO_REG_PRESS_DATA, 
+ 343:../../../mod/baro/baro.c ****                          sizeof( pressure_bytes ), 
+ 344:../../../mod/baro/baro.c **** 						 &pressure_bytes[0] );
+ 345:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 346:../../../mod/baro/baro.c **** 	{
+ 347:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 348:../../../mod/baro/baro.c **** 	}
+ 349:../../../mod/baro/baro.c **** 
+ 350:../../../mod/baro/baro.c **** /* Combine all bytes value to 24 bit value */
+ 351:../../../mod/baro/baro.c **** raw_pressure = ( ( (uint32_t) pressure_bytes[2] << 16 ) |
+ 352:../../../mod/baro/baro.c ****                  ( (uint32_t) pressure_bytes[1] <<  8 ) |
+ 353:../../../mod/baro/baro.c **** 				 ( (uint32_t) pressure_bytes[0]       ) );
+ 354:../../../mod/baro/baro.c **** 
+ 355:../../../mod/baro/baro.c **** /* Get compensation temperature for pressure compensation calculation */
+ 356:../../../mod/baro/baro.c **** baro_status   = baro_get_temp( &comp_temp );
+ 357:../../../mod/baro/baro.c **** 
+ 358:../../../mod/baro/baro.c **** /* Compensate using calibration data */
+ 359:../../../mod/baro/baro.c **** *pressure_ptr = press_compensate( raw_pressure );
+ 360:../../../mod/baro/baro.c **** 
+ 361:../../../mod/baro/baro.c **** return BARO_OK;
+ 362:../../../mod/baro/baro.c **** } /* baro_get_pressure */
+ 363:../../../mod/baro/baro.c **** 
+ 364:../../../mod/baro/baro.c **** 
+ 365:../../../mod/baro/baro.c **** /*******************************************************************************
+ 366:../../../mod/baro/baro.c **** *                                                                              *
+ 367:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   * 
+ 368:../../../mod/baro/baro.c **** * 		baro_get_temp                                                          *
+ 369:../../../mod/baro/baro.c **** *                                                                              *
+ 370:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 * 
+ 371:../../../mod/baro/baro.c **** * 		retrieves a temperature reading from the sensor                        *
+ 372:../../../mod/baro/baro.c **** *                                                                              *
+ 373:../../../mod/baro/baro.c **** *******************************************************************************/
+ARM GAS  /tmp/ccY8F0GP.s 			page 8
+
+
+ 374:../../../mod/baro/baro.c **** BARO_STATUS baro_get_temp
+ 375:../../../mod/baro/baro.c **** 	(
+ 376:../../../mod/baro/baro.c ****     float* temp_ptr 
+ 377:../../../mod/baro/baro.c **** 	)
+ 378:../../../mod/baro/baro.c **** {
+ 379:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 380:../../../mod/baro/baro.c **** Local variables 
+ 381:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 382:../../../mod/baro/baro.c **** uint8_t     temp_bytes[3]; /* Raw temperature readout bytes, LSB first */
+ 383:../../../mod/baro/baro.c **** uint32_t    raw_temp;      /* Raw temperature readout in uint32_t format */
+ 384:../../../mod/baro/baro.c **** BARO_STATUS baro_status;   /* Status codes returned from baro API calls  */
+ 385:../../../mod/baro/baro.c **** 
+ 386:../../../mod/baro/baro.c **** 
+ 387:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 388:../../../mod/baro/baro.c **** Initializations
+ 389:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 390:../../../mod/baro/baro.c **** raw_temp     = 0;
+ 391:../../../mod/baro/baro.c **** baro_status  = BARO_OK;
+ 392:../../../mod/baro/baro.c **** memset( &temp_bytes[0], 0, sizeof( temp_bytes ) );
+ 393:../../../mod/baro/baro.c **** 
+ 394:../../../mod/baro/baro.c **** 
+ 395:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 396:../../../mod/baro/baro.c **** API function implementation 
+ 397:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 398:../../../mod/baro/baro.c **** 
+ 399:../../../mod/baro/baro.c **** /* Read 3 consecutive temperature data registers */
+ 400:../../../mod/baro/baro.c **** baro_status = read_regs( BARO_REG_TEMP_DATA  , 
+ 401:../../../mod/baro/baro.c ****                          sizeof( temp_bytes ), 
+ 402:../../../mod/baro/baro.c **** 						 &temp_bytes[0] );
+ 403:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 404:../../../mod/baro/baro.c **** 	{
+ 405:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 406:../../../mod/baro/baro.c **** 	}
+ 407:../../../mod/baro/baro.c **** 
+ 408:../../../mod/baro/baro.c **** /* Combine all bytes value to 24 bit value */
+ 409:../../../mod/baro/baro.c **** raw_temp = ( ( (uint32_t) temp_bytes[2] << 16 ) |
+ 410:../../../mod/baro/baro.c ****              ( (uint32_t) temp_bytes[1] <<  8 ) |
+ 411:../../../mod/baro/baro.c **** 			 ( (uint32_t) temp_bytes[0]       ) ); 
+ 412:../../../mod/baro/baro.c **** 
+ 413:../../../mod/baro/baro.c **** /* Adjust using calibration data */
+ 414:../../../mod/baro/baro.c **** *temp_ptr = temp_compensate( raw_temp );
+ 415:../../../mod/baro/baro.c **** 
+ 416:../../../mod/baro/baro.c **** return BARO_OK;
+ 417:../../../mod/baro/baro.c **** 
+ 418:../../../mod/baro/baro.c **** } /* baro_get_temp */
+ 419:../../../mod/baro/baro.c **** 
+ 420:../../../mod/baro/baro.c **** 
+ 421:../../../mod/baro/baro.c **** /*******************************************************************************
+ 422:../../../mod/baro/baro.c **** *                                                                              *
+ 423:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   * 
+ 424:../../../mod/baro/baro.c **** * 		baro_get_altitude                                                      *
+ 425:../../../mod/baro/baro.c **** *                                                                              *
+ 426:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 * 
+ 427:../../../mod/baro/baro.c **** * 		gets the altitude of the rocket from the sensor readouts               *
+ 428:../../../mod/baro/baro.c **** *                                                                              *
+ 429:../../../mod/baro/baro.c **** *******************************************************************************/
+ 430:../../../mod/baro/baro.c **** BARO_STATUS baro_get_altitude
+ARM GAS  /tmp/ccY8F0GP.s 			page 9
+
+
+ 431:../../../mod/baro/baro.c **** 	(
+ 432:../../../mod/baro/baro.c ****     void
+ 433:../../../mod/baro/baro.c **** 	)
+ 434:../../../mod/baro/baro.c **** {
+ 435:../../../mod/baro/baro.c **** return BARO_OK;
+ 436:../../../mod/baro/baro.c **** } /* baro_get_altitude */
+ 437:../../../mod/baro/baro.c **** 
+ 438:../../../mod/baro/baro.c **** 
+ 439:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 440:../../../mod/baro/baro.c ****  Internal procedures 
+ 441:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 442:../../../mod/baro/baro.c **** 
+ 443:../../../mod/baro/baro.c **** 
+ 444:../../../mod/baro/baro.c **** /*******************************************************************************
+ 445:../../../mod/baro/baro.c **** *                                                                              *
+ 446:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   *
+ 447:../../../mod/baro/baro.c **** *       bytes_to_uin16_t                                                       *
+ 448:../../../mod/baro/baro.c **** *                                                                              *
+ 449:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 *
+ 450:../../../mod/baro/baro.c **** *       Converts two bytes to uint16_t format                                  *
+ 451:../../../mod/baro/baro.c **** *                                                                              *
+ 452:../../../mod/baro/baro.c **** *******************************************************************************/
+ 453:../../../mod/baro/baro.c **** static uint16_t bytes_to_uint16_t
+ 454:../../../mod/baro/baro.c **** 	(
+ 455:../../../mod/baro/baro.c **** 	uint8_t lsb_byte, /* In: Least significant byte */
+ 456:../../../mod/baro/baro.c **** 	uint8_t msb_byte  /* In: Most significant byte  */
+ 457:../../../mod/baro/baro.c **** 	)
+ 458:../../../mod/baro/baro.c **** {
+  28              		.loc 1 458 1 view -0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+ 459:../../../mod/baro/baro.c **** return ( ( (uint16_t) lsb_byte      ) |
+  33              		.loc 1 459 1 view .LVU1
+ 460:../../../mod/baro/baro.c ****          ( (uint16_t) msb_byte << 8 ) );
+ 461:../../../mod/baro/baro.c **** } /* bytes_to_uint16_t */
+  34              		.loc 1 461 1 is_stmt 0 view .LVU2
+  35 0000 40EA0120 		orr	r0, r0, r1, lsl #8
+  36              	.LVL1:
+  37              		.loc 1 461 1 view .LVU3
+  38 0004 7047     		bx	lr
+  39              		.cfi_endproc
+  40              	.LFE150:
+  42              		.section	.text.bytes_to_int16_t,"ax",%progbits
+  43              		.align	1
+  44              		.syntax unified
+  45              		.thumb
+  46              		.thumb_func
+  48              	bytes_to_int16_t:
+  49              	.LVL2:
+  50              	.LFB151:
+ 462:../../../mod/baro/baro.c **** 
+ 463:../../../mod/baro/baro.c **** 
+ 464:../../../mod/baro/baro.c **** /*******************************************************************************
+ 465:../../../mod/baro/baro.c **** *                                                                              *
+ 466:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   *
+ARM GAS  /tmp/ccY8F0GP.s 			page 10
+
+
+ 467:../../../mod/baro/baro.c **** *       bytes_to_in16_t                                                        *
+ 468:../../../mod/baro/baro.c **** *                                                                              *
+ 469:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 *
+ 470:../../../mod/baro/baro.c **** *       Converts two bytes to int16_t format                                   *
+ 471:../../../mod/baro/baro.c **** *                                                                              *
+ 472:../../../mod/baro/baro.c **** *******************************************************************************/
+ 473:../../../mod/baro/baro.c **** static int16_t bytes_to_int16_t
+ 474:../../../mod/baro/baro.c **** 	(
+ 475:../../../mod/baro/baro.c **** 	uint8_t lsb_byte, /* In: Least significant byte */
+ 476:../../../mod/baro/baro.c **** 	uint8_t msb_byte  /* In: Most significant byte  */
+ 477:../../../mod/baro/baro.c **** 	)
+ 478:../../../mod/baro/baro.c **** {
+  51              		.loc 1 478 1 is_stmt 1 view -0
+  52              		.cfi_startproc
+  53              		@ args = 0, pretend = 0, frame = 0
+  54              		@ frame_needed = 0, uses_anonymous_args = 0
+  55              		@ link register save eliminated.
+ 479:../../../mod/baro/baro.c **** uint16_t bytes_comb = ( ( (uint16_t) lsb_byte      ) |
+  56              		.loc 1 479 1 view .LVU5
+  57              		.loc 1 479 54 is_stmt 0 view .LVU6
+  58 0000 40EA0120 		orr	r0, r0, r1, lsl #8
+  59              	.LVL3:
+ 480:../../../mod/baro/baro.c ****                         ( (uint16_t) msb_byte << 8 ) );
+ 481:../../../mod/baro/baro.c **** return ( (int16_t) bytes_comb );
+  60              		.loc 1 481 1 is_stmt 1 view .LVU7
+ 482:../../../mod/baro/baro.c **** } /* bytes_to_uint16_t */
+  61              		.loc 1 482 1 is_stmt 0 view .LVU8
+  62 0004 00B2     		sxth	r0, r0
+  63              		.loc 1 482 1 view .LVU9
+  64 0006 7047     		bx	lr
+  65              		.cfi_endproc
+  66              	.LFE151:
+  68              		.section	.text.read_regs,"ax",%progbits
+  69              		.align	1
+  70              		.syntax unified
+  71              		.thumb
+  72              		.thumb_func
+  74              	read_regs:
+  75              	.LVL4:
+  76              	.LFB152:
+ 483:../../../mod/baro/baro.c **** 
+ 484:../../../mod/baro/baro.c **** 
+ 485:../../../mod/baro/baro.c **** /*******************************************************************************
+ 486:../../../mod/baro/baro.c **** *                                                                              *
+ 487:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   *
+ 488:../../../mod/baro/baro.c **** *       read_regs                                                              *
+ 489:../../../mod/baro/baro.c **** *                                                                              *
+ 490:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 *
+ 491:../../../mod/baro/baro.c **** *       Read from the baro's registers at a specified address                  *
+ 492:../../../mod/baro/baro.c **** *                                                                              *
+ 493:../../../mod/baro/baro.c **** *******************************************************************************/
+ 494:../../../mod/baro/baro.c **** static BARO_STATUS read_regs
+ 495:../../../mod/baro/baro.c **** 	(
+ 496:../../../mod/baro/baro.c **** 	uint8_t  reg_addr, /* In:  Register address            */
+ 497:../../../mod/baro/baro.c **** 	uint8_t  num_regs, /* In:  Number of registers to read */
+ 498:../../../mod/baro/baro.c **** 	uint8_t* pData     /* Out: Register contents           */
+ 499:../../../mod/baro/baro.c **** 	)
+ARM GAS  /tmp/ccY8F0GP.s 			page 11
+
+
+ 500:../../../mod/baro/baro.c **** {   
+  77              		.loc 1 500 1 is_stmt 1 view -0
+  78              		.cfi_startproc
+  79              		@ args = 0, pretend = 0, frame = 0
+  80              		@ frame_needed = 0, uses_anonymous_args = 0
+  81              		.loc 1 500 1 is_stmt 0 view .LVU11
+  82 0000 00B5     		push	{lr}
+  83              	.LCFI0:
+  84              		.cfi_def_cfa_offset 4
+  85              		.cfi_offset 14, -4
+  86 0002 85B0     		sub	sp, sp, #20
+  87              	.LCFI1:
+  88              		.cfi_def_cfa_offset 24
+ 501:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 502:../../../mod/baro/baro.c ****  Local variables  
+ 503:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 504:../../../mod/baro/baro.c **** HAL_StatusTypeDef hal_status;  /* HAL API Return codes */
+  89              		.loc 1 504 1 is_stmt 1 view .LVU12
+ 505:../../../mod/baro/baro.c **** uint32_t          i2c_timeout; /* I2C read timeout     */
+  90              		.loc 1 505 1 view .LVU13
+ 506:../../../mod/baro/baro.c **** 
+ 507:../../../mod/baro/baro.c **** 
+ 508:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 509:../../../mod/baro/baro.c ****  Initializations
+ 510:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 511:../../../mod/baro/baro.c **** hal_status  = HAL_OK;
+  91              		.loc 1 511 1 view .LVU14
+  92              	.LVL5:
+ 512:../../../mod/baro/baro.c **** i2c_timeout = BARO_DEFAULT_TIMEOUT*num_regs;
+  93              		.loc 1 512 1 view .LVU15
+ 513:../../../mod/baro/baro.c **** 
+ 514:../../../mod/baro/baro.c **** 
+ 515:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 516:../../../mod/baro/baro.c ****  Implementation 
+ 517:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 518:../../../mod/baro/baro.c **** 
+ 519:../../../mod/baro/baro.c **** /* Read I2C register*/
+ 520:../../../mod/baro/baro.c **** hal_status = HAL_I2C_Mem_Read( &( BARO_I2C )       ,
+  94              		.loc 1 520 1 view .LVU16
+  95              		.loc 1 520 14 is_stmt 0 view .LVU17
+  96 0004 0291     		str	r1, [sp, #8]
+  97 0006 0191     		str	r1, [sp, #4]
+  98 0008 0092     		str	r2, [sp]
+  99 000a 0123     		movs	r3, #1
+ 100 000c 0246     		mov	r2, r0
+ 101              	.LVL6:
+ 102              		.loc 1 520 14 view .LVU18
+ 103 000e EC21     		movs	r1, #236
+ 104              	.LVL7:
+ 105              		.loc 1 520 14 view .LVU19
+ 106 0010 0448     		ldr	r0, .L7
+ 107              	.LVL8:
+ 108              		.loc 1 520 14 view .LVU20
+ 109 0012 FFF7FEFF 		bl	HAL_I2C_Mem_Read
+ 110              	.LVL9:
+ 521:../../../mod/baro/baro.c **** 				               BARO_I2C_ADDR       ,
+ 522:../../../mod/baro/baro.c **** 				               reg_addr            ,
+ARM GAS  /tmp/ccY8F0GP.s 			page 12
+
+
+ 523:../../../mod/baro/baro.c **** 				               I2C_MEMADD_SIZE_8BIT,
+ 524:../../../mod/baro/baro.c **** 				               pData               ,
+ 525:../../../mod/baro/baro.c **** 				               num_regs            , 
+ 526:../../../mod/baro/baro.c **** 				               i2c_timeout );
+ 527:../../../mod/baro/baro.c **** if ( hal_status != HAL_OK )
+ 111              		.loc 1 527 1 is_stmt 1 view .LVU21
+ 112              		.loc 1 527 4 is_stmt 0 view .LVU22
+ 113 0016 10B9     		cbnz	r0, .L6
+ 114              	.L4:
+ 528:../../../mod/baro/baro.c **** 	{
+ 529:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 530:../../../mod/baro/baro.c **** 	}
+ 531:../../../mod/baro/baro.c **** else
+ 532:../../../mod/baro/baro.c **** 	{
+ 533:../../../mod/baro/baro.c **** 	return BARO_OK;
+ 534:../../../mod/baro/baro.c **** 	}
+ 535:../../../mod/baro/baro.c **** 
+ 536:../../../mod/baro/baro.c **** } /* read_reg */
+ 115              		.loc 1 536 1 view .LVU23
+ 116 0018 05B0     		add	sp, sp, #20
+ 117              	.LCFI2:
+ 118              		.cfi_remember_state
+ 119              		.cfi_def_cfa_offset 4
+ 120              		@ sp needed
+ 121 001a 5DF804FB 		ldr	pc, [sp], #4
+ 122              	.L6:
+ 123              	.LCFI3:
+ 124              		.cfi_restore_state
+ 529:../../../mod/baro/baro.c **** 	}
+ 125              		.loc 1 529 9 view .LVU24
+ 126 001e 0820     		movs	r0, #8
+ 127 0020 FAE7     		b	.L4
+ 128              	.L8:
+ 129 0022 00BF     		.align	2
+ 130              	.L7:
+ 131 0024 00000000 		.word	hi2c1
+ 132              		.cfi_endproc
+ 133              	.LFE152:
+ 135              		.section	.text.load_cal_data,"ax",%progbits
+ 136              		.align	1
+ 137              		.syntax unified
+ 138              		.thumb
+ 139              		.thumb_func
+ 141              	load_cal_data:
+ 142              	.LFB154:
+ 537:../../../mod/baro/baro.c **** 
+ 538:../../../mod/baro/baro.c **** 
+ 539:../../../mod/baro/baro.c **** /*******************************************************************************
+ 540:../../../mod/baro/baro.c **** *                                                                              *
+ 541:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   * 
+ 542:../../../mod/baro/baro.c **** *       write_reg                                                              *
+ 543:../../../mod/baro/baro.c **** *                                                                              *
+ 544:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 * 
+ 545:../../../mod/baro/baro.c **** *       Write to one of the baro's registers at a specified address            *
+ 546:../../../mod/baro/baro.c **** *                                                                              *
+ 547:../../../mod/baro/baro.c **** *******************************************************************************/
+ 548:../../../mod/baro/baro.c **** static BARO_STATUS write_reg
+ARM GAS  /tmp/ccY8F0GP.s 			page 13
+
+
+ 549:../../../mod/baro/baro.c **** 	(
+ 550:../../../mod/baro/baro.c **** 	uint8_t  reg_addr, /* In: Register address            */
+ 551:../../../mod/baro/baro.c **** 	uint8_t  data      /* In: Register contents           */
+ 552:../../../mod/baro/baro.c **** 	)
+ 553:../../../mod/baro/baro.c **** {   
+ 554:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 555:../../../mod/baro/baro.c ****  Local variables  
+ 556:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 557:../../../mod/baro/baro.c **** HAL_StatusTypeDef hal_status; /* HAL API Return codes */
+ 558:../../../mod/baro/baro.c **** 
+ 559:../../../mod/baro/baro.c **** 
+ 560:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 561:../../../mod/baro/baro.c ****  Implementation 
+ 562:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 563:../../../mod/baro/baro.c **** 
+ 564:../../../mod/baro/baro.c **** /* Write to register with I2C */
+ 565:../../../mod/baro/baro.c **** hal_status = HAL_I2C_Mem_Write( &( BARO_I2C )       ,
+ 566:../../../mod/baro/baro.c **** 				                BARO_I2C_ADDR       ,
+ 567:../../../mod/baro/baro.c **** 				                reg_addr            ,
+ 568:../../../mod/baro/baro.c **** 				                I2C_MEMADD_SIZE_8BIT,
+ 569:../../../mod/baro/baro.c **** 				                &data               ,
+ 570:../../../mod/baro/baro.c **** 				                sizeof( uint8_t )   , 
+ 571:../../../mod/baro/baro.c **** 				                BARO_DEFAULT_TIMEOUT );
+ 572:../../../mod/baro/baro.c **** if ( hal_status != HAL_OK )
+ 573:../../../mod/baro/baro.c **** 	{
+ 574:../../../mod/baro/baro.c **** 	return BARO_I2C_ERROR;
+ 575:../../../mod/baro/baro.c **** 	}
+ 576:../../../mod/baro/baro.c **** else
+ 577:../../../mod/baro/baro.c **** 	{
+ 578:../../../mod/baro/baro.c **** 	return BARO_OK;
+ 579:../../../mod/baro/baro.c **** 	}
+ 580:../../../mod/baro/baro.c **** 
+ 581:../../../mod/baro/baro.c **** } /* write_reg */
+ 582:../../../mod/baro/baro.c **** 
+ 583:../../../mod/baro/baro.c **** 
+ 584:../../../mod/baro/baro.c **** /*******************************************************************************
+ 585:../../../mod/baro/baro.c **** *                                                                              *
+ 586:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   *
+ 587:../../../mod/baro/baro.c **** *       load_cal_data                                                          *
+ 588:../../../mod/baro/baro.c **** *                                                                              *
+ 589:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 *
+ 590:../../../mod/baro/baro.c **** *       Load the compensation data from the baro sensor                        *
+ 591:../../../mod/baro/baro.c **** *                                                                              *
+ 592:../../../mod/baro/baro.c **** *******************************************************************************/
+ 593:../../../mod/baro/baro.c **** static BARO_STATUS load_cal_data
+ 594:../../../mod/baro/baro.c **** 	(
+ 595:../../../mod/baro/baro.c **** 	void
+ 596:../../../mod/baro/baro.c **** 	)
+ 597:../../../mod/baro/baro.c **** {
+ 143              		.loc 1 597 1 is_stmt 1 view -0
+ 144              		.cfi_startproc
+ 145              		@ args = 0, pretend = 0, frame = 64
+ 146              		@ frame_needed = 0, uses_anonymous_args = 0
+ 147 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 148              	.LCFI4:
+ 149              		.cfi_def_cfa_offset 36
+ 150              		.cfi_offset 4, -36
+ARM GAS  /tmp/ccY8F0GP.s 			page 14
+
+
+ 151              		.cfi_offset 5, -32
+ 152              		.cfi_offset 6, -28
+ 153              		.cfi_offset 7, -24
+ 154              		.cfi_offset 8, -20
+ 155              		.cfi_offset 9, -16
+ 156              		.cfi_offset 10, -12
+ 157              		.cfi_offset 11, -8
+ 158              		.cfi_offset 14, -4
+ 159 0004 91B0     		sub	sp, sp, #68
+ 160              	.LCFI5:
+ 161              		.cfi_def_cfa_offset 104
+ 598:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 599:../../../mod/baro/baro.c ****  Local variables  
+ 600:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 601:../../../mod/baro/baro.c **** BARO_CAL_DATA_INT cal_data_int;       /* Raw calibration data from baro       */
+ 162              		.loc 1 601 1 view .LVU26
+ 602:../../../mod/baro/baro.c **** uint8_t           buffer[BARO_CAL_BUFFER_SIZE]; /* Buffer for cal data        */
+ 163              		.loc 1 602 1 view .LVU27
+ 603:../../../mod/baro/baro.c **** BARO_STATUS       baro_status;        /* Baro API return codes                */
+ 164              		.loc 1 603 1 view .LVU28
+ 604:../../../mod/baro/baro.c **** 
+ 605:../../../mod/baro/baro.c **** 
+ 606:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 607:../../../mod/baro/baro.c ****  Initializations 
+ 608:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 609:../../../mod/baro/baro.c **** memset( &cal_data_int, 0, sizeof( cal_data_int ) );
+ 165              		.loc 1 609 1 view .LVU29
+ 166 0006 0023     		movs	r3, #0
+ 167 0008 0A93     		str	r3, [sp, #40]
+ 168 000a 0B93     		str	r3, [sp, #44]
+ 169 000c 0C93     		str	r3, [sp, #48]
+ 170 000e 0D93     		str	r3, [sp, #52]
+ 171 0010 0E93     		str	r3, [sp, #56]
+ 172 0012 ADF83C30 		strh	r3, [sp, #60]	@ movhi
+ 610:../../../mod/baro/baro.c **** memset( &buffer[0]   , 0, sizeof( buffer       ) );
+ 173              		.loc 1 610 1 view .LVU30
+ 174 0016 0493     		str	r3, [sp, #16]
+ 175 0018 0593     		str	r3, [sp, #20]
+ 176 001a 0693     		str	r3, [sp, #24]
+ 177 001c 0793     		str	r3, [sp, #28]
+ 178 001e 0893     		str	r3, [sp, #32]
+ 179 0020 8DF82430 		strb	r3, [sp, #36]
+ 611:../../../mod/baro/baro.c **** 
+ 612:../../../mod/baro/baro.c **** 
+ 613:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 614:../../../mod/baro/baro.c ****  Read Baro Registers 
+ 615:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 616:../../../mod/baro/baro.c **** 
+ 617:../../../mod/baro/baro.c **** /* Get Data */
+ 618:../../../mod/baro/baro.c **** baro_status = read_regs( BARO_REG_NVM_PAR_T1, 
+ 180              		.loc 1 618 1 view .LVU31
+ 181              		.loc 1 618 15 is_stmt 0 view .LVU32
+ 182 0024 04AA     		add	r2, sp, #16
+ 183 0026 1521     		movs	r1, #21
+ 184 0028 3120     		movs	r0, #49
+ 185 002a FFF7FEFF 		bl	read_regs
+ 186              	.LVL10:
+ARM GAS  /tmp/ccY8F0GP.s 			page 15
+
+
+ 619:../../../mod/baro/baro.c ****                          BARO_CAL_BUFFER_SIZE, 
+ 620:../../../mod/baro/baro.c **** 						 &buffer[0] );
+ 621:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 187              		.loc 1 621 1 is_stmt 1 view .LVU33
+ 188              		.loc 1 621 4 is_stmt 0 view .LVU34
+ 189 002e 8346     		mov	fp, r0
+ 190 0030 0028     		cmp	r0, #0
+ 191 0032 40F0ED80 		bne	.L10
+ 622:../../../mod/baro/baro.c **** 	{
+ 623:../../../mod/baro/baro.c **** 	return baro_status;
+ 624:../../../mod/baro/baro.c **** 	}
+ 625:../../../mod/baro/baro.c **** 
+ 626:../../../mod/baro/baro.c **** /* Convert to proper integer format */
+ 627:../../../mod/baro/baro.c **** cal_data_int.par_t1  = bytes_to_uint16_t( buffer[0], buffer[1] );
+ 192              		.loc 1 627 1 is_stmt 1 view .LVU35
+ 193              		.loc 1 627 24 is_stmt 0 view .LVU36
+ 194 0036 9DF81110 		ldrb	r1, [sp, #17]	@ zero_extendqisi2
+ 195 003a 9DF81000 		ldrb	r0, [sp, #16]	@ zero_extendqisi2
+ 196              	.LVL11:
+ 197              		.loc 1 627 24 view .LVU37
+ 198 003e FFF7FEFF 		bl	bytes_to_uint16_t
+ 199              	.LVL12:
+ 200 0042 0546     		mov	r5, r0
+ 201              		.loc 1 627 22 view .LVU38
+ 202 0044 ADF82800 		strh	r0, [sp, #40]	@ movhi
+ 628:../../../mod/baro/baro.c **** cal_data_int.par_t2  = bytes_to_uint16_t( buffer[2], buffer[3] );
+ 203              		.loc 1 628 1 is_stmt 1 view .LVU39
+ 204              		.loc 1 628 24 is_stmt 0 view .LVU40
+ 205 0048 9DF81310 		ldrb	r1, [sp, #19]	@ zero_extendqisi2
+ 206 004c 9DF81200 		ldrb	r0, [sp, #18]	@ zero_extendqisi2
+ 207 0050 FFF7FEFF 		bl	bytes_to_uint16_t
+ 208              	.LVL13:
+ 209 0054 0446     		mov	r4, r0
+ 210              		.loc 1 628 22 view .LVU41
+ 211 0056 ADF82A00 		strh	r0, [sp, #42]	@ movhi
+ 629:../../../mod/baro/baro.c **** cal_data_int.par_t3  = (int8_t) buffer[4];
+ 212              		.loc 1 629 1 is_stmt 1 view .LVU42
+ 213              		.loc 1 629 24 is_stmt 0 view .LVU43
+ 214 005a 9DF914A0 		ldrsb	r10, [sp, #20]
+ 215              		.loc 1 629 22 view .LVU44
+ 216 005e 8DF82CA0 		strb	r10, [sp, #44]
+ 630:../../../mod/baro/baro.c **** cal_data_int.par_p1  = bytes_to_int16_t( buffer[5], buffer[6] );
+ 217              		.loc 1 630 1 is_stmt 1 view .LVU45
+ 218              		.loc 1 630 24 is_stmt 0 view .LVU46
+ 219 0062 9DF81610 		ldrb	r1, [sp, #22]	@ zero_extendqisi2
+ 220 0066 9DF81500 		ldrb	r0, [sp, #21]	@ zero_extendqisi2
+ 221 006a FFF7FEFF 		bl	bytes_to_int16_t
+ 222              	.LVL14:
+ 223              		.loc 1 630 22 view .LVU47
+ 224 006e 0090     		str	r0, [sp]
+ 225 0070 ADF82E00 		strh	r0, [sp, #46]	@ movhi
+ 631:../../../mod/baro/baro.c **** cal_data_int.par_p2  = bytes_to_int16_t( buffer[7], buffer[8] );
+ 226              		.loc 1 631 1 is_stmt 1 view .LVU48
+ 227              		.loc 1 631 24 is_stmt 0 view .LVU49
+ 228 0074 9DF81810 		ldrb	r1, [sp, #24]	@ zero_extendqisi2
+ 229 0078 9DF81700 		ldrb	r0, [sp, #23]	@ zero_extendqisi2
+ 230 007c FFF7FEFF 		bl	bytes_to_int16_t
+ARM GAS  /tmp/ccY8F0GP.s 			page 16
+
+
+ 231              	.LVL15:
+ 232              		.loc 1 631 22 view .LVU50
+ 233 0080 0190     		str	r0, [sp, #4]
+ 234 0082 ADF83000 		strh	r0, [sp, #48]	@ movhi
+ 632:../../../mod/baro/baro.c **** cal_data_int.par_p3  = (int8_t)  buffer[9];
+ 235              		.loc 1 632 1 is_stmt 1 view .LVU51
+ 236              		.loc 1 632 24 is_stmt 0 view .LVU52
+ 237 0086 9DF91990 		ldrsb	r9, [sp, #25]
+ 238              		.loc 1 632 22 view .LVU53
+ 239 008a 8DF83290 		strb	r9, [sp, #50]
+ 633:../../../mod/baro/baro.c **** cal_data_int.par_p4  = (int8_t)  buffer[10];
+ 240              		.loc 1 633 1 is_stmt 1 view .LVU54
+ 241              		.loc 1 633 24 is_stmt 0 view .LVU55
+ 242 008e 9DF91A80 		ldrsb	r8, [sp, #26]
+ 243              		.loc 1 633 22 view .LVU56
+ 244 0092 8DF83380 		strb	r8, [sp, #51]
+ 634:../../../mod/baro/baro.c **** cal_data_int.par_p5  = bytes_to_uint16_t( buffer[11], buffer[12] );
+ 245              		.loc 1 634 1 is_stmt 1 view .LVU57
+ 246              		.loc 1 634 24 is_stmt 0 view .LVU58
+ 247 0096 9DF81C10 		ldrb	r1, [sp, #28]	@ zero_extendqisi2
+ 248 009a 9DF81B00 		ldrb	r0, [sp, #27]	@ zero_extendqisi2
+ 249 009e FFF7FEFF 		bl	bytes_to_uint16_t
+ 250              	.LVL16:
+ 251              		.loc 1 634 22 view .LVU59
+ 252 00a2 0290     		str	r0, [sp, #8]
+ 253 00a4 ADF83400 		strh	r0, [sp, #52]	@ movhi
+ 635:../../../mod/baro/baro.c **** cal_data_int.par_p6  = bytes_to_uint16_t( buffer[13], buffer[14] );
+ 254              		.loc 1 635 1 is_stmt 1 view .LVU60
+ 255              		.loc 1 635 24 is_stmt 0 view .LVU61
+ 256 00a8 9DF81E10 		ldrb	r1, [sp, #30]	@ zero_extendqisi2
+ 257 00ac 9DF81D00 		ldrb	r0, [sp, #29]	@ zero_extendqisi2
+ 258 00b0 FFF7FEFF 		bl	bytes_to_uint16_t
+ 259              	.LVL17:
+ 260              		.loc 1 635 22 view .LVU62
+ 261 00b4 0390     		str	r0, [sp, #12]
+ 262 00b6 ADF83600 		strh	r0, [sp, #54]	@ movhi
+ 636:../../../mod/baro/baro.c **** cal_data_int.par_p7  = (int8_t)  buffer[15];
+ 263              		.loc 1 636 1 is_stmt 1 view .LVU63
+ 264              		.loc 1 636 24 is_stmt 0 view .LVU64
+ 265 00ba 9DF91F70 		ldrsb	r7, [sp, #31]
+ 266              		.loc 1 636 22 view .LVU65
+ 267 00be 8DF83870 		strb	r7, [sp, #56]
+ 637:../../../mod/baro/baro.c **** cal_data_int.par_p8  = (int8_t)  buffer[16];
+ 268              		.loc 1 637 1 is_stmt 1 view .LVU66
+ 269              		.loc 1 637 24 is_stmt 0 view .LVU67
+ 270 00c2 9DF92060 		ldrsb	r6, [sp, #32]
+ 271              		.loc 1 637 22 view .LVU68
+ 272 00c6 8DF83960 		strb	r6, [sp, #57]
+ 638:../../../mod/baro/baro.c **** cal_data_int.par_p9  = bytes_to_int16_t( buffer[17], buffer[18] );
+ 273              		.loc 1 638 1 is_stmt 1 view .LVU69
+ 274              		.loc 1 638 24 is_stmt 0 view .LVU70
+ 275 00ca 9DF82210 		ldrb	r1, [sp, #34]	@ zero_extendqisi2
+ 276 00ce 9DF82100 		ldrb	r0, [sp, #33]	@ zero_extendqisi2
+ 277 00d2 FFF7FEFF 		bl	bytes_to_int16_t
+ 278              	.LVL18:
+ 279              		.loc 1 638 22 view .LVU71
+ 280 00d6 ADF83A00 		strh	r0, [sp, #58]	@ movhi
+ARM GAS  /tmp/ccY8F0GP.s 			page 17
+
+
+ 639:../../../mod/baro/baro.c **** cal_data_int.par_p10 = (int8_t) buffer[19];
+ 281              		.loc 1 639 1 is_stmt 1 view .LVU72
+ 282              		.loc 1 639 24 is_stmt 0 view .LVU73
+ 283 00da 9DF92310 		ldrsb	r1, [sp, #35]
+ 284              		.loc 1 639 22 view .LVU74
+ 285 00de 8DF83C10 		strb	r1, [sp, #60]
+ 640:../../../mod/baro/baro.c **** cal_data_int.par_p11 = (int8_t) buffer[20];
+ 286              		.loc 1 640 1 is_stmt 1 view .LVU75
+ 287              		.loc 1 640 24 is_stmt 0 view .LVU76
+ 288 00e2 9DF92420 		ldrsb	r2, [sp, #36]
+ 289              		.loc 1 640 22 view .LVU77
+ 290 00e6 8DF83D20 		strb	r2, [sp, #61]
+ 641:../../../mod/baro/baro.c **** 
+ 642:../../../mod/baro/baro.c **** 
+ 643:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 644:../../../mod/baro/baro.c ****  Convert to floating point format ( BMP390 Datasheet pg. 55 ) 
+ 645:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 646:../../../mod/baro/baro.c **** 
+ 647:../../../mod/baro/baro.c **** /* Temp Compensation */
+ 648:../../../mod/baro/baro.c **** baro_cal_data.par_t1   = ( ( (float) cal_data_int.par_t1  )/powf( 2, -8 ) );
+ 291              		.loc 1 648 1 is_stmt 1 view .LVU78
+ 292              		.loc 1 648 30 is_stmt 0 view .LVU79
+ 293 00ea 07EE905A 		vmov	s15, r5	@ int
+ 294 00ee F8EE677A 		vcvt.f32.u32	s15, s15
+ 295              		.loc 1 648 60 view .LVU80
+ 296 00f2 9FED497A 		vldr.32	s14, .L12
+ 297 00f6 67EE877A 		vmul.f32	s15, s15, s14
+ 298              		.loc 1 648 24 view .LVU81
+ 299 00fa 484B     		ldr	r3, .L12+4
+ 300 00fc C3ED007A 		vstr.32	s15, [r3]
+ 649:../../../mod/baro/baro.c **** baro_cal_data.par_t2   = ( ( (float) cal_data_int.par_t2  )/powf( 2, 30 ) );
+ 301              		.loc 1 649 1 is_stmt 1 view .LVU82
+ 302              		.loc 1 649 30 is_stmt 0 view .LVU83
+ 303 0100 07EE904A 		vmov	s15, r4	@ int
+ 304 0104 F8EE677A 		vcvt.f32.u32	s15, s15
+ 305              		.loc 1 649 60 view .LVU84
+ 306 0108 9FED457A 		vldr.32	s14, .L12+8
+ 307 010c 67EE877A 		vmul.f32	s15, s15, s14
+ 308              		.loc 1 649 24 view .LVU85
+ 309 0110 C3ED017A 		vstr.32	s15, [r3, #4]
+ 650:../../../mod/baro/baro.c **** baro_cal_data.par_t3   = ( ( (float) cal_data_int.par_t3  )/powf( 2, 48 ) );
+ 310              		.loc 1 650 1 is_stmt 1 view .LVU86
+ 311              		.loc 1 650 30 is_stmt 0 view .LVU87
+ 312 0114 07EE90AA 		vmov	s15, r10	@ int
+ 313 0118 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 314              		.loc 1 650 60 view .LVU88
+ 315 011c 9FED417A 		vldr.32	s14, .L12+12
+ 316 0120 67EE877A 		vmul.f32	s15, s15, s14
+ 317              		.loc 1 650 24 view .LVU89
+ 318 0124 C3ED027A 		vstr.32	s15, [r3, #8]
+ 651:../../../mod/baro/baro.c **** 
+ 652:../../../mod/baro/baro.c **** /* Pressure Compensation */
+ 653:../../../mod/baro/baro.c **** baro_cal_data.par_p1   = ( ( (float) cal_data_int.par_p1  ) - powf( 2, 14 ) );
+ 319              		.loc 1 653 1 is_stmt 1 view .LVU90
+ 320              		.loc 1 653 30 is_stmt 0 view .LVU91
+ 321 0128 DDED007A 		vldr.32	s15, [sp]	@ int
+ 322 012c F8EEE77A 		vcvt.f32.s32	s15, s15
+ARM GAS  /tmp/ccY8F0GP.s 			page 18
+
+
+ 323              		.loc 1 653 61 view .LVU92
+ 324 0130 DFED3D6A 		vldr.32	s13, .L12+16
+ 325 0134 77EEE67A 		vsub.f32	s15, s15, s13
+ 326              		.loc 1 653 24 view .LVU93
+ 327 0138 C3ED037A 		vstr.32	s15, [r3, #12]
+ 654:../../../mod/baro/baro.c **** baro_cal_data.par_p1  /= powf( 2, 20 );
+ 328              		.loc 1 654 1 is_stmt 1 view .LVU94
+ 329              		.loc 1 654 23 is_stmt 0 view .LVU95
+ 330 013c 9FED3B6A 		vldr.32	s12, .L12+20
+ 331 0140 67EE867A 		vmul.f32	s15, s15, s12
+ 332              		.loc 1 654 1 view .LVU96
+ 333 0144 C3ED037A 		vstr.32	s15, [r3, #12]
+ 655:../../../mod/baro/baro.c **** baro_cal_data.par_p2   = ( ( (float) cal_data_int.par_p2  ) - powf( 2, 14 ) );
+ 334              		.loc 1 655 1 is_stmt 1 view .LVU97
+ 335              		.loc 1 655 30 is_stmt 0 view .LVU98
+ 336 0148 DDED017A 		vldr.32	s15, [sp, #4]	@ int
+ 337 014c F8EEE77A 		vcvt.f32.s32	s15, s15
+ 338              		.loc 1 655 61 view .LVU99
+ 339 0150 77EEE67A 		vsub.f32	s15, s15, s13
+ 340              		.loc 1 655 24 view .LVU100
+ 341 0154 C3ED047A 		vstr.32	s15, [r3, #16]
+ 656:../../../mod/baro/baro.c **** baro_cal_data.par_p2  /= powf( 2, 29 );
+ 342              		.loc 1 656 1 is_stmt 1 view .LVU101
+ 343              		.loc 1 656 23 is_stmt 0 view .LVU102
+ 344 0158 DFED356A 		vldr.32	s13, .L12+24
+ 345 015c 67EEA67A 		vmul.f32	s15, s15, s13
+ 346              		.loc 1 656 1 view .LVU103
+ 347 0160 C3ED047A 		vstr.32	s15, [r3, #16]
+ 657:../../../mod/baro/baro.c **** baro_cal_data.par_p3   = ( ( (float) cal_data_int.par_p3  )/powf( 2, 32 ) );
+ 348              		.loc 1 657 1 is_stmt 1 view .LVU104
+ 349              		.loc 1 657 30 is_stmt 0 view .LVU105
+ 350 0164 07EE909A 		vmov	s15, r9	@ int
+ 351 0168 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 352              		.loc 1 657 60 view .LVU106
+ 353 016c DFED316A 		vldr.32	s13, .L12+28
+ 354 0170 67EEA67A 		vmul.f32	s15, s15, s13
+ 355              		.loc 1 657 24 view .LVU107
+ 356 0174 C3ED057A 		vstr.32	s15, [r3, #20]
+ 658:../../../mod/baro/baro.c **** baro_cal_data.par_p4   = ( ( (float) cal_data_int.par_p4  )/powf( 2, 37 ) );
+ 357              		.loc 1 658 1 is_stmt 1 view .LVU108
+ 358              		.loc 1 658 30 is_stmt 0 view .LVU109
+ 359 0178 07EE908A 		vmov	s15, r8	@ int
+ 360 017c F8EEE77A 		vcvt.f32.s32	s15, s15
+ 361              		.loc 1 658 60 view .LVU110
+ 362 0180 DFED2D6A 		vldr.32	s13, .L12+32
+ 363 0184 67EEA67A 		vmul.f32	s15, s15, s13
+ 364              		.loc 1 658 24 view .LVU111
+ 365 0188 C3ED067A 		vstr.32	s15, [r3, #24]
+ 659:../../../mod/baro/baro.c **** baro_cal_data.par_p5   = ( ( (float) cal_data_int.par_p5  )/powf( 2, -3 ) );
+ 366              		.loc 1 659 1 is_stmt 1 view .LVU112
+ 367              		.loc 1 659 30 is_stmt 0 view .LVU113
+ 368 018c DDED027A 		vldr.32	s15, [sp, #8]	@ int
+ 369 0190 F8EE677A 		vcvt.f32.u32	s15, s15
+ 370              		.loc 1 659 60 view .LVU114
+ 371 0194 F2EE006A 		vmov.f32	s13, #8.0e+0
+ 372 0198 67EEA67A 		vmul.f32	s15, s15, s13
+ 373              		.loc 1 659 24 view .LVU115
+ARM GAS  /tmp/ccY8F0GP.s 			page 19
+
+
+ 374 019c C3ED077A 		vstr.32	s15, [r3, #28]
+ 660:../../../mod/baro/baro.c **** baro_cal_data.par_p6   = ( ( (float) cal_data_int.par_p6  )/powf( 2,  6 ) );
+ 375              		.loc 1 660 1 is_stmt 1 view .LVU116
+ 376              		.loc 1 660 30 is_stmt 0 view .LVU117
+ 377 01a0 DDED037A 		vldr.32	s15, [sp, #12]	@ int
+ 378 01a4 F8EE677A 		vcvt.f32.u32	s15, s15
+ 379              		.loc 1 660 60 view .LVU118
+ 380 01a8 DFED246A 		vldr.32	s13, .L12+36
+ 381 01ac 67EEA67A 		vmul.f32	s15, s15, s13
+ 382              		.loc 1 660 24 view .LVU119
+ 383 01b0 C3ED087A 		vstr.32	s15, [r3, #32]
+ 661:../../../mod/baro/baro.c **** baro_cal_data.par_p7   = ( ( (float) cal_data_int.par_p7  )/powf( 2,  8 ) );
+ 384              		.loc 1 661 1 is_stmt 1 view .LVU120
+ 385              		.loc 1 661 30 is_stmt 0 view .LVU121
+ 386 01b4 07EE907A 		vmov	s15, r7	@ int
+ 387 01b8 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 388              		.loc 1 661 60 view .LVU122
+ 389 01bc DFED206A 		vldr.32	s13, .L12+40
+ 390 01c0 67EEA67A 		vmul.f32	s15, s15, s13
+ 391              		.loc 1 661 24 view .LVU123
+ 392 01c4 C3ED097A 		vstr.32	s15, [r3, #36]
+ 662:../../../mod/baro/baro.c **** baro_cal_data.par_p8   = ( ( (float) cal_data_int.par_p8  )/powf( 2, 15 ) );
+ 393              		.loc 1 662 1 is_stmt 1 view .LVU124
+ 394              		.loc 1 662 30 is_stmt 0 view .LVU125
+ 395 01c8 07EE906A 		vmov	s15, r6	@ int
+ 396 01cc F8EEE77A 		vcvt.f32.s32	s15, s15
+ 397              		.loc 1 662 60 view .LVU126
+ 398 01d0 DFED1C6A 		vldr.32	s13, .L12+44
+ 399 01d4 67EEA67A 		vmul.f32	s15, s15, s13
+ 400              		.loc 1 662 24 view .LVU127
+ 401 01d8 C3ED0A7A 		vstr.32	s15, [r3, #40]
+ 663:../../../mod/baro/baro.c **** baro_cal_data.par_p9   = ( ( (float) cal_data_int.par_p9  )/powf( 2, 48 ) );
+ 402              		.loc 1 663 1 is_stmt 1 view .LVU128
+ 403              		.loc 1 663 30 is_stmt 0 view .LVU129
+ 404 01dc 07EE900A 		vmov	s15, r0	@ int
+ 405 01e0 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 406              		.loc 1 663 60 view .LVU130
+ 407 01e4 67EE877A 		vmul.f32	s15, s15, s14
+ 408              		.loc 1 663 24 view .LVU131
+ 409 01e8 C3ED0B7A 		vstr.32	s15, [r3, #44]
+ 664:../../../mod/baro/baro.c **** baro_cal_data.par_p10  = ( ( (float) cal_data_int.par_p10 )/powf( 2, 48 ) );
+ 410              		.loc 1 664 1 is_stmt 1 view .LVU132
+ 411              		.loc 1 664 30 is_stmt 0 view .LVU133
+ 412 01ec 07EE901A 		vmov	s15, r1	@ int
+ 413 01f0 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 414              		.loc 1 664 60 view .LVU134
+ 415 01f4 67EE877A 		vmul.f32	s15, s15, s14
+ 416              		.loc 1 664 24 view .LVU135
+ 417 01f8 C3ED0C7A 		vstr.32	s15, [r3, #48]
+ 665:../../../mod/baro/baro.c **** baro_cal_data.par_p11  = ( ( (float) cal_data_int.par_p11 )/powf( 2, 65 ) );
+ 418              		.loc 1 665 1 is_stmt 1 view .LVU136
+ 419              		.loc 1 665 30 is_stmt 0 view .LVU137
+ 420 01fc 07EE902A 		vmov	s15, r2	@ int
+ 421 0200 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 422              		.loc 1 665 60 view .LVU138
+ 423 0204 9FED107A 		vldr.32	s14, .L12+48
+ 424 0208 67EE877A 		vmul.f32	s15, s15, s14
+ARM GAS  /tmp/ccY8F0GP.s 			page 20
+
+
+ 425              		.loc 1 665 24 view .LVU139
+ 426 020c C3ED0D7A 		vstr.32	s15, [r3, #52]
+ 666:../../../mod/baro/baro.c **** 
+ 667:../../../mod/baro/baro.c **** /* Load Successful */
+ 668:../../../mod/baro/baro.c **** return BARO_OK;
+ 427              		.loc 1 668 1 is_stmt 1 view .LVU140
+ 428              	.L10:
+ 669:../../../mod/baro/baro.c **** 
+ 670:../../../mod/baro/baro.c **** } /* load_cal_data */
+ 429              		.loc 1 670 1 is_stmt 0 view .LVU141
+ 430 0210 5846     		mov	r0, fp
+ 431 0212 11B0     		add	sp, sp, #68
+ 432              	.LCFI6:
+ 433              		.cfi_def_cfa_offset 36
+ 434              		@ sp needed
+ 435 0214 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 436              	.L13:
+ 437              		.align	2
+ 438              	.L12:
+ 439 0218 00008043 		.word	1132462080
+ 440 021c 00000000 		.word	baro_cal_data
+ 441 0220 00008030 		.word	813694976
+ 442 0224 00008027 		.word	662700032
+ 443 0228 00008046 		.word	1182793728
+ 444 022c 00008035 		.word	897581056
+ 445 0230 00000031 		.word	822083584
+ 446 0234 0000802F 		.word	796917760
+ 447 0238 0000002D 		.word	754974720
+ 448 023c 0000803C 		.word	1015021568
+ 449 0240 0000803B 		.word	998244352
+ 450 0244 00000038 		.word	939524096
+ 451 0248 0000001F 		.word	520093696
+ 452              		.cfi_endproc
+ 453              	.LFE154:
+ 455              		.section	.text.write_reg,"ax",%progbits
+ 456              		.align	1
+ 457              		.syntax unified
+ 458              		.thumb
+ 459              		.thumb_func
+ 461              	write_reg:
+ 462              	.LVL19:
+ 463              	.LFB153:
+ 553:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 464              		.loc 1 553 1 is_stmt 1 view -0
+ 465              		.cfi_startproc
+ 466              		@ args = 0, pretend = 0, frame = 8
+ 467              		@ frame_needed = 0, uses_anonymous_args = 0
+ 553:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 468              		.loc 1 553 1 is_stmt 0 view .LVU143
+ 469 0000 00B5     		push	{lr}
+ 470              	.LCFI7:
+ 471              		.cfi_def_cfa_offset 4
+ 472              		.cfi_offset 14, -4
+ 473 0002 87B0     		sub	sp, sp, #28
+ 474              	.LCFI8:
+ 475              		.cfi_def_cfa_offset 32
+ 476 0004 0246     		mov	r2, r0
+ARM GAS  /tmp/ccY8F0GP.s 			page 21
+
+
+ 477 0006 8DF81710 		strb	r1, [sp, #23]
+ 557:../../../mod/baro/baro.c **** 
+ 478              		.loc 1 557 1 is_stmt 1 view .LVU144
+ 565:../../../mod/baro/baro.c **** 				                BARO_I2C_ADDR       ,
+ 479              		.loc 1 565 1 view .LVU145
+ 565:../../../mod/baro/baro.c **** 				                BARO_I2C_ADDR       ,
+ 480              		.loc 1 565 14 is_stmt 0 view .LVU146
+ 481 000a 0123     		movs	r3, #1
+ 482 000c 0293     		str	r3, [sp, #8]
+ 483 000e 0193     		str	r3, [sp, #4]
+ 484 0010 0DF11701 		add	r1, sp, #23
+ 485              	.LVL20:
+ 565:../../../mod/baro/baro.c **** 				                BARO_I2C_ADDR       ,
+ 486              		.loc 1 565 14 view .LVU147
+ 487 0014 0091     		str	r1, [sp]
+ 488 0016 EC21     		movs	r1, #236
+ 489              	.LVL21:
+ 565:../../../mod/baro/baro.c **** 				                BARO_I2C_ADDR       ,
+ 490              		.loc 1 565 14 view .LVU148
+ 491 0018 0448     		ldr	r0, .L18
+ 492              	.LVL22:
+ 565:../../../mod/baro/baro.c **** 				                BARO_I2C_ADDR       ,
+ 493              		.loc 1 565 14 view .LVU149
+ 494 001a FFF7FEFF 		bl	HAL_I2C_Mem_Write
+ 495              	.LVL23:
+ 572:../../../mod/baro/baro.c **** 	{
+ 496              		.loc 1 572 1 is_stmt 1 view .LVU150
+ 572:../../../mod/baro/baro.c **** 	{
+ 497              		.loc 1 572 4 is_stmt 0 view .LVU151
+ 498 001e 10B9     		cbnz	r0, .L17
+ 499              	.L15:
+ 581:../../../mod/baro/baro.c **** 
+ 500              		.loc 1 581 1 view .LVU152
+ 501 0020 07B0     		add	sp, sp, #28
+ 502              	.LCFI9:
+ 503              		.cfi_remember_state
+ 504              		.cfi_def_cfa_offset 4
+ 505              		@ sp needed
+ 506 0022 5DF804FB 		ldr	pc, [sp], #4
+ 507              	.L17:
+ 508              	.LCFI10:
+ 509              		.cfi_restore_state
+ 574:../../../mod/baro/baro.c **** 	}
+ 510              		.loc 1 574 9 view .LVU153
+ 511 0026 0820     		movs	r0, #8
+ 512 0028 FAE7     		b	.L15
+ 513              	.L19:
+ 514 002a 00BF     		.align	2
+ 515              	.L18:
+ 516 002c 00000000 		.word	hi2c1
+ 517              		.cfi_endproc
+ 518              	.LFE153:
+ 520              		.section	.text.press_compensate,"ax",%progbits
+ 521              		.align	1
+ 522              		.syntax unified
+ 523              		.thumb
+ 524              		.thumb_func
+ARM GAS  /tmp/ccY8F0GP.s 			page 22
+
+
+ 526              	press_compensate:
+ 527              	.LVL24:
+ 528              	.LFB156:
+ 671:../../../mod/baro/baro.c **** 
+ 672:../../../mod/baro/baro.c **** 
+ 673:../../../mod/baro/baro.c **** /*******************************************************************************
+ 674:../../../mod/baro/baro.c **** *                                                                              *
+ 675:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   *
+ 676:../../../mod/baro/baro.c **** *       temp_compensate                                                        *
+ 677:../../../mod/baro/baro.c **** *                                                                              *
+ 678:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 *
+ 679:../../../mod/baro/baro.c **** *       Apply the compensation formula to raw temperature readout              *
+ 680:../../../mod/baro/baro.c **** *                                                                              *
+ 681:../../../mod/baro/baro.c **** *******************************************************************************/
+ 682:../../../mod/baro/baro.c **** static float temp_compensate
+ 683:../../../mod/baro/baro.c **** 	(
+ 684:../../../mod/baro/baro.c **** 	uint32_t raw_readout
+ 685:../../../mod/baro/baro.c **** 	)
+ 686:../../../mod/baro/baro.c **** {
+ 687:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 688:../../../mod/baro/baro.c ****  Local variables  
+ 689:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 690:../../../mod/baro/baro.c **** float partial_data1; /* Intermediate compensation results */
+ 691:../../../mod/baro/baro.c **** float partial_data2;
+ 692:../../../mod/baro/baro.c **** 
+ 693:../../../mod/baro/baro.c **** 
+ 694:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 695:../../../mod/baro/baro.c ****  Initializations 
+ 696:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 697:../../../mod/baro/baro.c **** partial_data1 = 0;
+ 698:../../../mod/baro/baro.c **** partial_data2 = 0;
+ 699:../../../mod/baro/baro.c **** 
+ 700:../../../mod/baro/baro.c **** 
+ 701:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 702:../../../mod/baro/baro.c ****  Calculations 
+ 703:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 704:../../../mod/baro/baro.c **** partial_data1 = (float)( raw_readout - baro_cal_data.par_t1 );
+ 705:../../../mod/baro/baro.c **** partial_data2 = (float)( partial_data1*baro_cal_data.par_t2 );
+ 706:../../../mod/baro/baro.c **** baro_cal_data.comp_temp = (float)( partial_data2 + 
+ 707:../../../mod/baro/baro.c ****                             powf( partial_data1, 2)*baro_cal_data.par_t3 );
+ 708:../../../mod/baro/baro.c **** return baro_cal_data.comp_temp;
+ 709:../../../mod/baro/baro.c **** 
+ 710:../../../mod/baro/baro.c **** } /* temp_compensate */
+ 711:../../../mod/baro/baro.c **** 
+ 712:../../../mod/baro/baro.c **** 
+ 713:../../../mod/baro/baro.c **** /*******************************************************************************
+ 714:../../../mod/baro/baro.c **** *                                                                              *
+ 715:../../../mod/baro/baro.c **** * PROCEDURE:                                                                   *
+ 716:../../../mod/baro/baro.c **** *       press_compensate                                                       *
+ 717:../../../mod/baro/baro.c **** *                                                                              *
+ 718:../../../mod/baro/baro.c **** * DESCRIPTION:                                                                 *
+ 719:../../../mod/baro/baro.c **** *       Apply the compensation formula to raw pressure readouts                *
+ 720:../../../mod/baro/baro.c **** *                                                                              *
+ 721:../../../mod/baro/baro.c **** *******************************************************************************/
+ 722:../../../mod/baro/baro.c **** static float press_compensate 
+ 723:../../../mod/baro/baro.c **** 	(
+ 724:../../../mod/baro/baro.c **** 	uint32_t raw_readout
+ARM GAS  /tmp/ccY8F0GP.s 			page 23
+
+
+ 725:../../../mod/baro/baro.c **** 	)
+ 726:../../../mod/baro/baro.c **** {
+ 529              		.loc 1 726 1 is_stmt 1 view -0
+ 530              		.cfi_startproc
+ 531              		@ args = 0, pretend = 0, frame = 0
+ 532              		@ frame_needed = 0, uses_anonymous_args = 0
+ 533              		.loc 1 726 1 is_stmt 0 view .LVU155
+ 534 0000 10B5     		push	{r4, lr}
+ 535              	.LCFI11:
+ 536              		.cfi_def_cfa_offset 8
+ 537              		.cfi_offset 4, -8
+ 538              		.cfi_offset 14, -4
+ 539 0002 2DED068B 		vpush.64	{d8, d9, d10}
+ 540              	.LCFI12:
+ 541              		.cfi_def_cfa_offset 32
+ 542              		.cfi_offset 80, -32
+ 543              		.cfi_offset 81, -28
+ 544              		.cfi_offset 82, -24
+ 545              		.cfi_offset 83, -20
+ 546              		.cfi_offset 84, -16
+ 547              		.cfi_offset 85, -12
+ 548 0006 09EE900A 		vmov	s19, r0	@ int
+ 727:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 728:../../../mod/baro/baro.c ****  Local variables  
+ 729:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 730:../../../mod/baro/baro.c **** float partial_data1; /* Intermediate compensation results */
+ 549              		.loc 1 730 1 is_stmt 1 view .LVU156
+ 731:../../../mod/baro/baro.c **** float partial_data2;
+ 550              		.loc 1 731 1 view .LVU157
+ 732:../../../mod/baro/baro.c **** float partial_data3;
+ 551              		.loc 1 732 1 view .LVU158
+ 733:../../../mod/baro/baro.c **** float partial_data4;
+ 552              		.loc 1 733 1 view .LVU159
+ 734:../../../mod/baro/baro.c **** float partial_out1;
+ 553              		.loc 1 734 1 view .LVU160
+ 735:../../../mod/baro/baro.c **** float partial_out2;
+ 554              		.loc 1 735 1 view .LVU161
+ 736:../../../mod/baro/baro.c **** 
+ 737:../../../mod/baro/baro.c **** 
+ 738:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 739:../../../mod/baro/baro.c ****  Initializations 
+ 740:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 741:../../../mod/baro/baro.c **** partial_data1 = 0;
+ 555              		.loc 1 741 1 view .LVU162
+ 556              	.LVL25:
+ 742:../../../mod/baro/baro.c **** partial_data2 = 0;
+ 557              		.loc 1 742 1 view .LVU163
+ 743:../../../mod/baro/baro.c **** partial_data3 = 0;
+ 558              		.loc 1 743 1 view .LVU164
+ 744:../../../mod/baro/baro.c **** partial_data3 = 0;
+ 559              		.loc 1 744 1 view .LVU165
+ 745:../../../mod/baro/baro.c **** partial_out1  = 0;
+ 560              		.loc 1 745 1 view .LVU166
+ 746:../../../mod/baro/baro.c **** partial_out2  = 0;
+ 561              		.loc 1 746 1 view .LVU167
+ 747:../../../mod/baro/baro.c **** 
+ 748:../../../mod/baro/baro.c **** 
+ARM GAS  /tmp/ccY8F0GP.s 			page 24
+
+
+ 749:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 750:../../../mod/baro/baro.c ****  Calculations 
+ 751:../../../mod/baro/baro.c **** ------------------------------------------------------------------------------*/
+ 752:../../../mod/baro/baro.c **** partial_data1 = baro_cal_data.par_p6*baro_cal_data.comp_temp;
+ 562              		.loc 1 752 1 view .LVU168
+ 563              		.loc 1 752 30 is_stmt 0 view .LVU169
+ 564 000a 354C     		ldr	r4, .L22
+ 565 000c 94ED08AA 		vldr.32	s20, [r4, #32]
+ 566              		.loc 1 752 51 view .LVU170
+ 567 0010 94ED0E9A 		vldr.32	s18, [r4, #56]
+ 568              		.loc 1 752 15 view .LVU171
+ 569 0014 2AEE09AA 		vmul.f32	s20, s20, s18
+ 570              	.LVL26:
+ 753:../../../mod/baro/baro.c **** partial_data2 = baro_cal_data.par_p7*powf( baro_cal_data.comp_temp, 2 );
+ 571              		.loc 1 753 1 is_stmt 1 view .LVU172
+ 572              		.loc 1 753 30 is_stmt 0 view .LVU173
+ 573 0018 D4ED098A 		vldr.32	s17, [r4, #36]
+ 574              		.loc 1 753 38 view .LVU174
+ 575 001c F0EE000A 		vmov.f32	s1, #2.0e+0
+ 576 0020 B0EE490A 		vmov.f32	s0, s18
+ 577 0024 FFF7FEFF 		bl	powf
+ 578              	.LVL27:
+ 579              		.loc 1 753 15 view .LVU175
+ 580 0028 68EE808A 		vmul.f32	s17, s17, s0
+ 581              	.LVL28:
+ 754:../../../mod/baro/baro.c **** partial_data3 = baro_cal_data.par_p8*powf( baro_cal_data.comp_temp, 3 );
+ 582              		.loc 1 754 1 is_stmt 1 view .LVU176
+ 583              		.loc 1 754 30 is_stmt 0 view .LVU177
+ 584 002c 94ED0A8A 		vldr.32	s16, [r4, #40]
+ 585              		.loc 1 754 38 view .LVU178
+ 586 0030 F0EE080A 		vmov.f32	s1, #3.0e+0
+ 587 0034 B0EE490A 		vmov.f32	s0, s18
+ 588 0038 FFF7FEFF 		bl	powf
+ 589              	.LVL29:
+ 590              		.loc 1 754 15 view .LVU179
+ 591 003c 68EE007A 		vmul.f32	s15, s16, s0
+ 592              	.LVL30:
+ 755:../../../mod/baro/baro.c **** partial_out1  =  ( baro_cal_data.par_p5 + partial_data1 + 
+ 593              		.loc 1 755 1 is_stmt 1 view .LVU180
+ 594              		.loc 1 755 33 is_stmt 0 view .LVU181
+ 595 0040 94ED078A 		vldr.32	s16, [r4, #28]
+ 596              		.loc 1 755 41 view .LVU182
+ 597 0044 38EE0A8A 		vadd.f32	s16, s16, s20
+ 598              		.loc 1 755 57 view .LVU183
+ 599 0048 38EE288A 		vadd.f32	s16, s16, s17
+ 600              		.loc 1 755 15 view .LVU184
+ 601 004c 38EE278A 		vadd.f32	s16, s16, s15
+ 602              	.LVL31:
+ 756:../../../mod/baro/baro.c ****                    partial_data2        + partial_data3 );
+ 757:../../../mod/baro/baro.c **** 
+ 758:../../../mod/baro/baro.c **** partial_data1 = baro_cal_data.par_p2*baro_cal_data.comp_temp;
+ 603              		.loc 1 758 1 is_stmt 1 view .LVU185
+ 604              		.loc 1 758 30 is_stmt 0 view .LVU186
+ 605 0050 D4ED04AA 		vldr.32	s21, [r4, #16]
+ 606              		.loc 1 758 15 view .LVU187
+ 607 0054 69EE2AAA 		vmul.f32	s21, s18, s21
+ 608              	.LVL32:
+ARM GAS  /tmp/ccY8F0GP.s 			page 25
+
+
+ 759:../../../mod/baro/baro.c **** partial_data2 = baro_cal_data.par_p3*powf( baro_cal_data.comp_temp, 2 );
+ 609              		.loc 1 759 1 is_stmt 1 view .LVU188
+ 610              		.loc 1 759 30 is_stmt 0 view .LVU189
+ 611 0058 94ED05AA 		vldr.32	s20, [r4, #20]
+ 612              		.loc 1 759 38 view .LVU190
+ 613 005c F0EE000A 		vmov.f32	s1, #2.0e+0
+ 614 0060 B0EE490A 		vmov.f32	s0, s18
+ 615 0064 FFF7FEFF 		bl	powf
+ 616              	.LVL33:
+ 617              		.loc 1 759 15 view .LVU191
+ 618 0068 2AEE00AA 		vmul.f32	s20, s20, s0
+ 619              	.LVL34:
+ 760:../../../mod/baro/baro.c **** partial_data3 = baro_cal_data.par_p4*powf( baro_cal_data.comp_temp, 3 );
+ 620              		.loc 1 760 1 is_stmt 1 view .LVU192
+ 621              		.loc 1 760 30 is_stmt 0 view .LVU193
+ 622 006c D4ED068A 		vldr.32	s17, [r4, #24]
+ 623              		.loc 1 760 38 view .LVU194
+ 624 0070 F0EE080A 		vmov.f32	s1, #3.0e+0
+ 625 0074 B0EE490A 		vmov.f32	s0, s18
+ 626 0078 FFF7FEFF 		bl	powf
+ 627              	.LVL35:
+ 628              		.loc 1 760 15 view .LVU195
+ 629 007c 68EE807A 		vmul.f32	s15, s17, s0
+ 630              	.LVL36:
+ 761:../../../mod/baro/baro.c **** partial_out2  = (float) raw_readout*( baro_cal_data.par_p1 + 
+ 631              		.loc 1 761 1 is_stmt 1 view .LVU196
+ 632              		.loc 1 761 17 is_stmt 0 view .LVU197
+ 633 0080 F8EE699A 		vcvt.f32.u32	s19, s19
+ 634              	.LVL37:
+ 635              		.loc 1 761 52 view .LVU198
+ 636 0084 D4ED038A 		vldr.32	s17, [r4, #12]
+ 637              		.loc 1 761 60 view .LVU199
+ 638 0088 78EEAA8A 		vadd.f32	s17, s17, s21
+ 762:../../../mod/baro/baro.c ****                                       partial_data1        +
+ 639              		.loc 1 762 60 view .LVU200
+ 640 008c 78EE8A8A 		vadd.f32	s17, s17, s20
+ 763:../../../mod/baro/baro.c **** 									  partial_data2        +
+ 641              		.loc 1 763 33 view .LVU201
+ 642 0090 78EEA78A 		vadd.f32	s17, s17, s15
+ 761:../../../mod/baro/baro.c **** partial_out2  = (float) raw_readout*( baro_cal_data.par_p1 + 
+ 643              		.loc 1 761 15 view .LVU202
+ 644 0094 69EEA88A 		vmul.f32	s17, s19, s17
+ 645              	.LVL38:
+ 764:../../../mod/baro/baro.c **** 									  partial_data3 );
+ 765:../../../mod/baro/baro.c **** 
+ 766:../../../mod/baro/baro.c **** partial_data1 = powf( ( (float) raw_readout ), 2 );
+ 646              		.loc 1 766 1 is_stmt 1 view .LVU203
+ 647              		.loc 1 766 17 is_stmt 0 view .LVU204
+ 648 0098 F0EE000A 		vmov.f32	s1, #2.0e+0
+ 649 009c B0EE690A 		vmov.f32	s0, s19
+ 650 00a0 FFF7FEFF 		bl	powf
+ 651              	.LVL39:
+ 767:../../../mod/baro/baro.c **** partial_data2 = ( baro_cal_data.par_p9 + 
+ 652              		.loc 1 767 1 is_stmt 1 view .LVU205
+ 653              		.loc 1 767 32 is_stmt 0 view .LVU206
+ 654 00a4 D4ED0B7A 		vldr.32	s15, [r4, #44]
+ 768:../../../mod/baro/baro.c ****                   baro_cal_data.par_p10*baro_cal_data.comp_temp );
+ARM GAS  /tmp/ccY8F0GP.s 			page 26
+
+
+ 655              		.loc 1 768 32 view .LVU207
+ 656 00a8 94ED0C7A 		vldr.32	s14, [r4, #48]
+ 657              		.loc 1 768 40 view .LVU208
+ 658 00ac 29EE079A 		vmul.f32	s18, s18, s14
+ 767:../../../mod/baro/baro.c **** partial_data2 = ( baro_cal_data.par_p9 + 
+ 659              		.loc 1 767 15 view .LVU209
+ 660 00b0 77EE897A 		vadd.f32	s15, s15, s18
+ 661              	.LVL40:
+ 769:../../../mod/baro/baro.c **** partial_data3 = partial_data1*partial_data2;
+ 662              		.loc 1 769 1 is_stmt 1 view .LVU210
+ 663              		.loc 1 769 15 is_stmt 0 view .LVU211
+ 664 00b4 20EE279A 		vmul.f32	s18, s0, s15
+ 665              	.LVL41:
+ 770:../../../mod/baro/baro.c **** partial_data4 = ( partial_data3 + 
+ 666              		.loc 1 770 1 is_stmt 1 view .LVU212
+ 771:../../../mod/baro/baro.c ****                   powf( ( (float) raw_readout ), 3 )*baro_cal_data.par_p11 );
+ 667              		.loc 1 771 19 is_stmt 0 view .LVU213
+ 668 00b8 F0EE080A 		vmov.f32	s1, #3.0e+0
+ 669 00bc B0EE690A 		vmov.f32	s0, s19
+ 670              	.LVL42:
+ 671              		.loc 1 771 19 view .LVU214
+ 672 00c0 FFF7FEFF 		bl	powf
+ 673              	.LVL43:
+ 674              		.loc 1 771 67 view .LVU215
+ 675 00c4 D4ED0D7A 		vldr.32	s15, [r4, #52]
+ 676              		.loc 1 771 53 view .LVU216
+ 677 00c8 60EE277A 		vmul.f32	s15, s0, s15
+ 770:../../../mod/baro/baro.c **** partial_data4 = ( partial_data3 + 
+ 678              		.loc 1 770 15 view .LVU217
+ 679 00cc 77EE897A 		vadd.f32	s15, s15, s18
+ 680              	.LVL44:
+ 772:../../../mod/baro/baro.c **** 
+ 773:../../../mod/baro/baro.c **** return partial_out1 + partial_out2 + partial_data4;
+ 681              		.loc 1 773 1 is_stmt 1 view .LVU218
+ 682              		.loc 1 773 21 is_stmt 0 view .LVU219
+ 683 00d0 38EE280A 		vadd.f32	s0, s16, s17
+ 774:../../../mod/baro/baro.c **** 
+ 775:../../../mod/baro/baro.c **** } /* press_compensate */
+ 684              		.loc 1 775 1 view .LVU220
+ 685 00d4 30EE270A 		vadd.f32	s0, s0, s15
+ 686 00d8 BDEC068B 		vldm	sp!, {d8-d10}
+ 687              	.LCFI13:
+ 688              		.cfi_restore 84
+ 689              		.cfi_restore 85
+ 690              		.cfi_restore 82
+ 691              		.cfi_restore 83
+ 692              		.cfi_restore 80
+ 693              		.cfi_restore 81
+ 694              		.cfi_def_cfa_offset 8
+ 695              	.LVL45:
+ 696              		.loc 1 775 1 view .LVU221
+ 697 00dc 10BD     		pop	{r4, pc}
+ 698              	.L23:
+ 699 00de 00BF     		.align	2
+ 700              	.L22:
+ 701 00e0 00000000 		.word	baro_cal_data
+ 702              		.cfi_endproc
+ARM GAS  /tmp/ccY8F0GP.s 			page 27
+
+
+ 703              	.LFE156:
+ 705              		.section	.text.temp_compensate,"ax",%progbits
+ 706              		.align	1
+ 707              		.syntax unified
+ 708              		.thumb
+ 709              		.thumb_func
+ 711              	temp_compensate:
+ 712              	.LVL46:
+ 713              	.LFB155:
+ 686:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 714              		.loc 1 686 1 is_stmt 1 view -0
+ 715              		.cfi_startproc
+ 716              		@ args = 0, pretend = 0, frame = 0
+ 717              		@ frame_needed = 0, uses_anonymous_args = 0
+ 686:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 718              		.loc 1 686 1 is_stmt 0 view .LVU223
+ 719 0000 10B5     		push	{r4, lr}
+ 720              	.LCFI14:
+ 721              		.cfi_def_cfa_offset 8
+ 722              		.cfi_offset 4, -8
+ 723              		.cfi_offset 14, -4
+ 724 0002 2DED028B 		vpush.64	{d8}
+ 725              	.LCFI15:
+ 726              		.cfi_def_cfa_offset 16
+ 727              		.cfi_offset 80, -16
+ 728              		.cfi_offset 81, -12
+ 729 0006 00EE100A 		vmov	s0, r0	@ int
+ 690:../../../mod/baro/baro.c **** float partial_data2;
+ 730              		.loc 1 690 1 is_stmt 1 view .LVU224
+ 691:../../../mod/baro/baro.c **** 
+ 731              		.loc 1 691 1 view .LVU225
+ 697:../../../mod/baro/baro.c **** partial_data2 = 0;
+ 732              		.loc 1 697 1 view .LVU226
+ 733              	.LVL47:
+ 698:../../../mod/baro/baro.c **** 
+ 734              		.loc 1 698 1 view .LVU227
+ 704:../../../mod/baro/baro.c **** partial_data2 = (float)( partial_data1*baro_cal_data.par_t2 );
+ 735              		.loc 1 704 1 view .LVU228
+ 704:../../../mod/baro/baro.c **** partial_data2 = (float)( partial_data1*baro_cal_data.par_t2 );
+ 736              		.loc 1 704 17 is_stmt 0 view .LVU229
+ 737 000a B8EE400A 		vcvt.f32.u32	s0, s0
+ 704:../../../mod/baro/baro.c **** partial_data2 = (float)( partial_data1*baro_cal_data.par_t2 );
+ 738              		.loc 1 704 53 view .LVU230
+ 739 000e 0C4C     		ldr	r4, .L26
+ 740 0010 D4ED007A 		vldr.32	s15, [r4]
+ 704:../../../mod/baro/baro.c **** partial_data2 = (float)( partial_data1*baro_cal_data.par_t2 );
+ 741              		.loc 1 704 15 view .LVU231
+ 742 0014 30EE670A 		vsub.f32	s0, s0, s15
+ 743              	.LVL48:
+ 705:../../../mod/baro/baro.c **** baro_cal_data.comp_temp = (float)( partial_data2 + 
+ 744              		.loc 1 705 1 is_stmt 1 view .LVU232
+ 705:../../../mod/baro/baro.c **** baro_cal_data.comp_temp = (float)( partial_data2 + 
+ 745              		.loc 1 705 53 is_stmt 0 view .LVU233
+ 746 0018 94ED018A 		vldr.32	s16, [r4, #4]
+ 705:../../../mod/baro/baro.c **** baro_cal_data.comp_temp = (float)( partial_data2 + 
+ 747              		.loc 1 705 15 view .LVU234
+ 748 001c 28EE008A 		vmul.f32	s16, s16, s0
+ARM GAS  /tmp/ccY8F0GP.s 			page 28
+
+
+ 749              	.LVL49:
+ 706:../../../mod/baro/baro.c ****                             powf( partial_data1, 2)*baro_cal_data.par_t3 );
+ 750              		.loc 1 706 1 is_stmt 1 view .LVU235
+ 707:../../../mod/baro/baro.c **** return baro_cal_data.comp_temp;
+ 751              		.loc 1 707 29 is_stmt 0 view .LVU236
+ 752 0020 F0EE000A 		vmov.f32	s1, #2.0e+0
+ 753 0024 FFF7FEFF 		bl	powf
+ 754              	.LVL50:
+ 707:../../../mod/baro/baro.c **** return baro_cal_data.comp_temp;
+ 755              		.loc 1 707 66 view .LVU237
+ 756 0028 D4ED027A 		vldr.32	s15, [r4, #8]
+ 707:../../../mod/baro/baro.c **** return baro_cal_data.comp_temp;
+ 757              		.loc 1 707 52 view .LVU238
+ 758 002c 20EE270A 		vmul.f32	s0, s0, s15
+ 706:../../../mod/baro/baro.c ****                             powf( partial_data1, 2)*baro_cal_data.par_t3 );
+ 759              		.loc 1 706 27 view .LVU239
+ 760 0030 30EE080A 		vadd.f32	s0, s0, s16
+ 706:../../../mod/baro/baro.c ****                             powf( partial_data1, 2)*baro_cal_data.par_t3 );
+ 761              		.loc 1 706 25 view .LVU240
+ 762 0034 84ED0E0A 		vstr.32	s0, [r4, #56]
+ 708:../../../mod/baro/baro.c **** 
+ 763              		.loc 1 708 1 is_stmt 1 view .LVU241
+ 710:../../../mod/baro/baro.c **** 
+ 764              		.loc 1 710 1 is_stmt 0 view .LVU242
+ 765 0038 BDEC028B 		vldm	sp!, {d8}
+ 766              	.LCFI16:
+ 767              		.cfi_restore 80
+ 768              		.cfi_restore 81
+ 769              		.cfi_def_cfa_offset 8
+ 770              	.LVL51:
+ 710:../../../mod/baro/baro.c **** 
+ 771              		.loc 1 710 1 view .LVU243
+ 772 003c 10BD     		pop	{r4, pc}
+ 773              	.L27:
+ 774 003e 00BF     		.align	2
+ 775              	.L26:
+ 776 0040 00000000 		.word	baro_cal_data
+ 777              		.cfi_endproc
+ 778              	.LFE155:
+ 780              		.section	.text.baro_config,"ax",%progbits
+ 781              		.align	1
+ 782              		.global	baro_config
+ 783              		.syntax unified
+ 784              		.thumb
+ 785              		.thumb_func
+ 787              	baro_config:
+ 788              	.LVL52:
+ 789              	.LFB145:
+ 192:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 790              		.loc 1 192 1 is_stmt 1 view -0
+ 791              		.cfi_startproc
+ 792              		@ args = 0, pretend = 0, frame = 0
+ 793              		@ frame_needed = 0, uses_anonymous_args = 0
+ 192:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 794              		.loc 1 192 1 is_stmt 0 view .LVU245
+ 795 0000 F8B5     		push	{r3, r4, r5, r6, r7, lr}
+ 796              	.LCFI17:
+ARM GAS  /tmp/ccY8F0GP.s 			page 29
+
+
+ 797              		.cfi_def_cfa_offset 24
+ 798              		.cfi_offset 3, -24
+ 799              		.cfi_offset 4, -20
+ 800              		.cfi_offset 5, -16
+ 801              		.cfi_offset 6, -12
+ 802              		.cfi_offset 7, -8
+ 803              		.cfi_offset 14, -4
+ 196:../../../mod/baro/baro.c **** uint8_t       pwr_ctrl;    /* Contents of PWR_CTRL register               */
+ 804              		.loc 1 196 1 is_stmt 1 view .LVU246
+ 197:../../../mod/baro/baro.c **** uint8_t       osr;         /* Contents of OSR register                    */
+ 805              		.loc 1 197 1 view .LVU247
+ 198:../../../mod/baro/baro.c **** uint8_t       odr;         /* Contents of ODR register                    */
+ 806              		.loc 1 198 1 view .LVU248
+ 199:../../../mod/baro/baro.c **** uint8_t       iir;         /* Contents of CONFIG register (IIR Filter)    */
+ 807              		.loc 1 199 1 view .LVU249
+ 200:../../../mod/baro/baro.c **** 
+ 808              		.loc 1 200 1 view .LVU250
+ 206:../../../mod/baro/baro.c **** pwr_ctrl    = 0;
+ 809              		.loc 1 206 1 view .LVU251
+ 810              	.LVL53:
+ 207:../../../mod/baro/baro.c **** osr         = 0;
+ 811              		.loc 1 207 1 view .LVU252
+ 208:../../../mod/baro/baro.c **** odr         = 0;
+ 812              		.loc 1 208 1 view .LVU253
+ 209:../../../mod/baro/baro.c **** iir         = 0;
+ 813              		.loc 1 209 1 view .LVU254
+ 210:../../../mod/baro/baro.c **** 
+ 814              		.loc 1 210 1 view .LVU255
+ 218:../../../mod/baro/baro.c **** pwr_ctrl |= config_ptr -> mode << 4;             /* Set operating mode       */
+ 815              		.loc 1 218 1 view .LVU256
+ 218:../../../mod/baro/baro.c **** pwr_ctrl |= config_ptr -> mode << 4;             /* Set operating mode       */
+ 816              		.loc 1 218 24 is_stmt 0 view .LVU257
+ 817 0002 0578     		ldrb	r5, [r0]	@ zero_extendqisi2
+ 818              	.LVL54:
+ 219:../../../mod/baro/baro.c **** osr      |= config_ptr -> press_OSR_setting;     /* Pressure oversampling    */
+ 819              		.loc 1 219 1 is_stmt 1 view .LVU258
+ 219:../../../mod/baro/baro.c **** osr      |= config_ptr -> press_OSR_setting;     /* Pressure oversampling    */
+ 820              		.loc 1 219 24 is_stmt 0 view .LVU259
+ 821 0004 90F801E0 		ldrb	lr, [r0, #1]	@ zero_extendqisi2
+ 219:../../../mod/baro/baro.c **** osr      |= config_ptr -> press_OSR_setting;     /* Pressure oversampling    */
+ 822              		.loc 1 219 10 view .LVU260
+ 823 0008 45EA0E11 		orr	r1, r5, lr, lsl #4
+ 824              	.LVL55:
+ 220:../../../mod/baro/baro.c **** osr      |= config_ptr -> temp_OSR_setting << 3; /* Temperature oversampling */
+ 825              		.loc 1 220 1 is_stmt 1 view .LVU261
+ 220:../../../mod/baro/baro.c **** osr      |= config_ptr -> temp_OSR_setting << 3; /* Temperature oversampling */
+ 826              		.loc 1 220 24 is_stmt 0 view .LVU262
+ 827 000c 90F802C0 		ldrb	ip, [r0, #2]	@ zero_extendqisi2
+ 828              	.LVL56:
+ 221:../../../mod/baro/baro.c **** odr      |= config_ptr -> ODR_setting;           /* Sampling Frequency       */
+ 829              		.loc 1 221 1 is_stmt 1 view .LVU263
+ 221:../../../mod/baro/baro.c **** odr      |= config_ptr -> ODR_setting;           /* Sampling Frequency       */
+ 830              		.loc 1 221 24 is_stmt 0 view .LVU264
+ 831 0010 C278     		ldrb	r2, [r0, #3]	@ zero_extendqisi2
+ 221:../../../mod/baro/baro.c **** odr      |= config_ptr -> ODR_setting;           /* Sampling Frequency       */
+ 832              		.loc 1 221 10 view .LVU265
+ 833 0012 4CEAC204 		orr	r4, ip, r2, lsl #3
+ARM GAS  /tmp/ccY8F0GP.s 			page 30
+
+
+ 834              	.LVL57:
+ 222:../../../mod/baro/baro.c **** iir      |= config_ptr -> IIR_setting;           /* IIR Filter Selection     */
+ 835              		.loc 1 222 1 is_stmt 1 view .LVU266
+ 222:../../../mod/baro/baro.c **** iir      |= config_ptr -> IIR_setting;           /* IIR Filter Selection     */
+ 836              		.loc 1 222 24 is_stmt 0 view .LVU267
+ 837 0016 0679     		ldrb	r6, [r0, #4]	@ zero_extendqisi2
+ 838              	.LVL58:
+ 223:../../../mod/baro/baro.c **** 
+ 839              		.loc 1 223 1 is_stmt 1 view .LVU268
+ 223:../../../mod/baro/baro.c **** 
+ 840              		.loc 1 223 24 is_stmt 0 view .LVU269
+ 841 0018 4779     		ldrb	r7, [r0, #5]	@ zero_extendqisi2
+ 842              	.LVL59:
+ 226:../../../mod/baro/baro.c **** baro_configuration.mode              = config_ptr -> mode;
+ 843              		.loc 1 226 1 is_stmt 1 view .LVU270
+ 226:../../../mod/baro/baro.c **** baro_configuration.mode              = config_ptr -> mode;
+ 844              		.loc 1 226 38 is_stmt 0 view .LVU271
+ 845 001a 134B     		ldr	r3, .L35
+ 846 001c 1D70     		strb	r5, [r3]
+ 227:../../../mod/baro/baro.c **** baro_configuration.press_OSR_setting = config_ptr -> press_OSR_setting;
+ 847              		.loc 1 227 1 is_stmt 1 view .LVU272
+ 227:../../../mod/baro/baro.c **** baro_configuration.press_OSR_setting = config_ptr -> press_OSR_setting;
+ 848              		.loc 1 227 38 is_stmt 0 view .LVU273
+ 849 001e 83F801E0 		strb	lr, [r3, #1]
+ 228:../../../mod/baro/baro.c **** baro_configuration.temp_OSR_setting  = config_ptr -> temp_OSR_setting;
+ 850              		.loc 1 228 1 is_stmt 1 view .LVU274
+ 228:../../../mod/baro/baro.c **** baro_configuration.temp_OSR_setting  = config_ptr -> temp_OSR_setting;
+ 851              		.loc 1 228 38 is_stmt 0 view .LVU275
+ 852 0022 83F802C0 		strb	ip, [r3, #2]
+ 229:../../../mod/baro/baro.c **** baro_configuration.ODR_setting       = config_ptr -> ODR_setting;
+ 853              		.loc 1 229 1 is_stmt 1 view .LVU276
+ 229:../../../mod/baro/baro.c **** baro_configuration.ODR_setting       = config_ptr -> ODR_setting;
+ 854              		.loc 1 229 38 is_stmt 0 view .LVU277
+ 855 0026 DA70     		strb	r2, [r3, #3]
+ 230:../../../mod/baro/baro.c **** baro_configuration.IIR_setting       = config_ptr -> IIR_setting;
+ 856              		.loc 1 230 1 is_stmt 1 view .LVU278
+ 230:../../../mod/baro/baro.c **** baro_configuration.IIR_setting       = config_ptr -> IIR_setting;
+ 857              		.loc 1 230 38 is_stmt 0 view .LVU279
+ 858 0028 1E71     		strb	r6, [r3, #4]
+ 231:../../../mod/baro/baro.c **** 
+ 859              		.loc 1 231 1 is_stmt 1 view .LVU280
+ 231:../../../mod/baro/baro.c **** 
+ 860              		.loc 1 231 38 is_stmt 0 view .LVU281
+ 861 002a 5F71     		strb	r7, [r3, #5]
+ 239:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 862              		.loc 1 239 1 is_stmt 1 view .LVU282
+ 239:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 863              		.loc 1 239 15 is_stmt 0 view .LVU283
+ 864 002c C9B2     		uxtb	r1, r1
+ 239:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 865              		.loc 1 239 15 view .LVU284
+ 866 002e 1B20     		movs	r0, #27
+ 867              	.LVL60:
+ 239:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 868              		.loc 1 239 15 view .LVU285
+ 869 0030 FFF7FEFF 		bl	write_reg
+ 870              	.LVL61:
+ARM GAS  /tmp/ccY8F0GP.s 			page 31
+
+
+ 240:../../../mod/baro/baro.c **** 	{
+ 871              		.loc 1 240 1 is_stmt 1 view .LVU286
+ 240:../../../mod/baro/baro.c **** 	{
+ 872              		.loc 1 240 4 is_stmt 0 view .LVU287
+ 873 0034 88B9     		cbnz	r0, .L30
+ 874 0036 E4B2     		uxtb	r4, r4
+ 246:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 875              		.loc 1 246 1 is_stmt 1 view .LVU288
+ 246:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 876              		.loc 1 246 15 is_stmt 0 view .LVU289
+ 877 0038 2146     		mov	r1, r4
+ 878 003a 1C20     		movs	r0, #28
+ 879              	.LVL62:
+ 246:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 880              		.loc 1 246 15 view .LVU290
+ 881 003c FFF7FEFF 		bl	write_reg
+ 882              	.LVL63:
+ 247:../../../mod/baro/baro.c **** 	{
+ 883              		.loc 1 247 1 is_stmt 1 view .LVU291
+ 247:../../../mod/baro/baro.c **** 	{
+ 884              		.loc 1 247 4 is_stmt 0 view .LVU292
+ 885 0040 68B9     		cbnz	r0, .L31
+ 253:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 886              		.loc 1 253 1 is_stmt 1 view .LVU293
+ 253:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 887              		.loc 1 253 15 is_stmt 0 view .LVU294
+ 888 0042 3146     		mov	r1, r6
+ 889 0044 1D20     		movs	r0, #29
+ 890              	.LVL64:
+ 253:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 891              		.loc 1 253 15 view .LVU295
+ 892 0046 FFF7FEFF 		bl	write_reg
+ 893              	.LVL65:
+ 254:../../../mod/baro/baro.c **** 	{
+ 894              		.loc 1 254 1 is_stmt 1 view .LVU296
+ 254:../../../mod/baro/baro.c **** 	{
+ 895              		.loc 1 254 4 is_stmt 0 view .LVU297
+ 896 004a 50B9     		cbnz	r0, .L32
+ 260:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 897              		.loc 1 260 1 is_stmt 1 view .LVU298
+ 260:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 898              		.loc 1 260 15 is_stmt 0 view .LVU299
+ 899 004c 3946     		mov	r1, r7
+ 900 004e 1F20     		movs	r0, #31
+ 901              	.LVL66:
+ 260:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 902              		.loc 1 260 15 view .LVU300
+ 903 0050 FFF7FEFF 		bl	write_reg
+ 904              	.LVL67:
+ 261:../../../mod/baro/baro.c **** 	{
+ 905              		.loc 1 261 1 is_stmt 1 view .LVU301
+ 261:../../../mod/baro/baro.c **** 	{
+ 906              		.loc 1 261 4 is_stmt 0 view .LVU302
+ 907 0054 10B1     		cbz	r0, .L29
+ 263:../../../mod/baro/baro.c **** 	}
+ 908              		.loc 1 263 9 view .LVU303
+ 909 0056 0820     		movs	r0, #8
+ARM GAS  /tmp/ccY8F0GP.s 			page 32
+
+
+ 910              	.LVL68:
+ 263:../../../mod/baro/baro.c **** 	}
+ 911              		.loc 1 263 9 view .LVU304
+ 912 0058 00E0     		b	.L29
+ 913              	.LVL69:
+ 914              	.L30:
+ 242:../../../mod/baro/baro.c **** 	}
+ 915              		.loc 1 242 9 view .LVU305
+ 916 005a 0820     		movs	r0, #8
+ 917              	.LVL70:
+ 918              	.L29:
+ 269:../../../mod/baro/baro.c **** 
+ 919              		.loc 1 269 1 view .LVU306
+ 920 005c F8BD     		pop	{r3, r4, r5, r6, r7, pc}
+ 921              	.LVL71:
+ 922              	.L31:
+ 249:../../../mod/baro/baro.c **** 	}
+ 923              		.loc 1 249 9 view .LVU307
+ 924 005e 0820     		movs	r0, #8
+ 925              	.LVL72:
+ 249:../../../mod/baro/baro.c **** 	}
+ 926              		.loc 1 249 9 view .LVU308
+ 927 0060 FCE7     		b	.L29
+ 928              	.LVL73:
+ 929              	.L32:
+ 256:../../../mod/baro/baro.c **** 	}
+ 930              		.loc 1 256 9 view .LVU309
+ 931 0062 0820     		movs	r0, #8
+ 932              	.LVL74:
+ 256:../../../mod/baro/baro.c **** 	}
+ 933              		.loc 1 256 9 view .LVU310
+ 934 0064 FAE7     		b	.L29
+ 935              	.L36:
+ 936 0066 00BF     		.align	2
+ 937              	.L35:
+ 938 0068 00000000 		.word	baro_configuration
+ 939              		.cfi_endproc
+ 940              	.LFE145:
+ 942              		.section	.text.baro_get_device_id,"ax",%progbits
+ 943              		.align	1
+ 944              		.global	baro_get_device_id
+ 945              		.syntax unified
+ 946              		.thumb
+ 947              		.thumb_func
+ 949              	baro_get_device_id:
+ 950              	.LVL75:
+ 951              	.LFB146:
+ 286:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 952              		.loc 1 286 1 is_stmt 1 view -0
+ 953              		.cfi_startproc
+ 954              		@ args = 0, pretend = 0, frame = 0
+ 955              		@ frame_needed = 0, uses_anonymous_args = 0
+ 286:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 956              		.loc 1 286 1 is_stmt 0 view .LVU312
+ 957 0000 08B5     		push	{r3, lr}
+ 958              	.LCFI18:
+ 959              		.cfi_def_cfa_offset 8
+ARM GAS  /tmp/ccY8F0GP.s 			page 33
+
+
+ 960              		.cfi_offset 3, -8
+ 961              		.cfi_offset 14, -4
+ 962 0002 0246     		mov	r2, r0
+ 290:../../../mod/baro/baro.c **** 
+ 963              		.loc 1 290 1 is_stmt 1 view .LVU313
+ 298:../../../mod/baro/baro.c ****                          sizeof( uint8_t ), 
+ 964              		.loc 1 298 1 view .LVU314
+ 298:../../../mod/baro/baro.c ****                          sizeof( uint8_t ), 
+ 965              		.loc 1 298 15 is_stmt 0 view .LVU315
+ 966 0004 0121     		movs	r1, #1
+ 967 0006 0020     		movs	r0, #0
+ 968              	.LVL76:
+ 298:../../../mod/baro/baro.c ****                          sizeof( uint8_t ), 
+ 969              		.loc 1 298 15 view .LVU316
+ 970 0008 FFF7FEFF 		bl	read_regs
+ 971              	.LVL77:
+ 301:../../../mod/baro/baro.c **** } /* baro_get_device_id */
+ 972              		.loc 1 301 1 is_stmt 1 view .LVU317
+ 302:../../../mod/baro/baro.c **** 
+ 973              		.loc 1 302 1 is_stmt 0 view .LVU318
+ 974 000c 08BD     		pop	{r3, pc}
+ 975              		.cfi_endproc
+ 976              	.LFE146:
+ 978              		.section	.text.baro_get_temp,"ax",%progbits
+ 979              		.align	1
+ 980              		.global	baro_get_temp
+ 981              		.syntax unified
+ 982              		.thumb
+ 983              		.thumb_func
+ 985              	baro_get_temp:
+ 986              	.LVL78:
+ 987              	.LFB148:
+ 378:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 988              		.loc 1 378 1 is_stmt 1 view -0
+ 989              		.cfi_startproc
+ 990              		@ args = 0, pretend = 0, frame = 8
+ 991              		@ frame_needed = 0, uses_anonymous_args = 0
+ 378:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 992              		.loc 1 378 1 is_stmt 0 view .LVU320
+ 993 0000 30B5     		push	{r4, r5, lr}
+ 994              	.LCFI19:
+ 995              		.cfi_def_cfa_offset 12
+ 996              		.cfi_offset 4, -12
+ 997              		.cfi_offset 5, -8
+ 998              		.cfi_offset 14, -4
+ 999 0002 83B0     		sub	sp, sp, #12
+ 1000              	.LCFI20:
+ 1001              		.cfi_def_cfa_offset 24
+ 1002 0004 0546     		mov	r5, r0
+ 382:../../../mod/baro/baro.c **** uint32_t    raw_temp;      /* Raw temperature readout in uint32_t format */
+ 1003              		.loc 1 382 1 is_stmt 1 view .LVU321
+ 383:../../../mod/baro/baro.c **** BARO_STATUS baro_status;   /* Status codes returned from baro API calls  */
+ 1004              		.loc 1 383 1 view .LVU322
+ 384:../../../mod/baro/baro.c **** 
+ 1005              		.loc 1 384 1 view .LVU323
+ 390:../../../mod/baro/baro.c **** baro_status  = BARO_OK;
+ 1006              		.loc 1 390 1 view .LVU324
+ARM GAS  /tmp/ccY8F0GP.s 			page 34
+
+
+ 1007              	.LVL79:
+ 391:../../../mod/baro/baro.c **** memset( &temp_bytes[0], 0, sizeof( temp_bytes ) );
+ 1008              		.loc 1 391 1 view .LVU325
+ 392:../../../mod/baro/baro.c **** 
+ 1009              		.loc 1 392 1 view .LVU326
+ 1010 0006 0023     		movs	r3, #0
+ 1011 0008 ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 1012 000c 8DF80630 		strb	r3, [sp, #6]
+ 400:../../../mod/baro/baro.c ****                          sizeof( temp_bytes ), 
+ 1013              		.loc 1 400 1 view .LVU327
+ 400:../../../mod/baro/baro.c ****                          sizeof( temp_bytes ), 
+ 1014              		.loc 1 400 15 is_stmt 0 view .LVU328
+ 1015 0010 01AA     		add	r2, sp, #4
+ 1016 0012 0321     		movs	r1, #3
+ 1017 0014 0720     		movs	r0, #7
+ 1018              	.LVL80:
+ 400:../../../mod/baro/baro.c ****                          sizeof( temp_bytes ), 
+ 1019              		.loc 1 400 15 view .LVU329
+ 1020 0016 FFF7FEFF 		bl	read_regs
+ 1021              	.LVL81:
+ 403:../../../mod/baro/baro.c **** 	{
+ 1022              		.loc 1 403 1 is_stmt 1 view .LVU330
+ 403:../../../mod/baro/baro.c **** 	{
+ 1023              		.loc 1 403 4 is_stmt 0 view .LVU331
+ 1024 001a 88B9     		cbnz	r0, .L41
+ 1025 001c 0446     		mov	r4, r0
+ 409:../../../mod/baro/baro.c ****              ( (uint32_t) temp_bytes[1] <<  8 ) |
+ 1026              		.loc 1 409 1 is_stmt 1 view .LVU332
+ 409:../../../mod/baro/baro.c ****              ( (uint32_t) temp_bytes[1] <<  8 ) |
+ 1027              		.loc 1 409 37 is_stmt 0 view .LVU333
+ 1028 001e 9DF80620 		ldrb	r2, [sp, #6]	@ zero_extendqisi2
+ 410:../../../mod/baro/baro.c **** 			 ( (uint32_t) temp_bytes[0]       ) ); 
+ 1029              		.loc 1 410 37 view .LVU334
+ 1030 0022 9DF80530 		ldrb	r3, [sp, #5]	@ zero_extendqisi2
+ 410:../../../mod/baro/baro.c **** 			 ( (uint32_t) temp_bytes[0]       ) ); 
+ 1031              		.loc 1 410 41 view .LVU335
+ 1032 0026 1B02     		lsls	r3, r3, #8
+ 409:../../../mod/baro/baro.c ****              ( (uint32_t) temp_bytes[1] <<  8 ) |
+ 1033              		.loc 1 409 49 view .LVU336
+ 1034 0028 43EA0243 		orr	r3, r3, r2, lsl #16
+ 411:../../../mod/baro/baro.c **** 
+ 1035              		.loc 1 411 28 view .LVU337
+ 1036 002c 9DF80400 		ldrb	r0, [sp, #4]	@ zero_extendqisi2
+ 1037              	.LVL82:
+ 414:../../../mod/baro/baro.c **** 
+ 1038              		.loc 1 414 1 is_stmt 1 view .LVU338
+ 414:../../../mod/baro/baro.c **** 
+ 1039              		.loc 1 414 13 is_stmt 0 view .LVU339
+ 1040 0030 1843     		orrs	r0, r0, r3
+ 1041              	.LVL83:
+ 414:../../../mod/baro/baro.c **** 
+ 1042              		.loc 1 414 13 view .LVU340
+ 1043 0032 FFF7FEFF 		bl	temp_compensate
+ 1044              	.LVL84:
+ 414:../../../mod/baro/baro.c **** 
+ 1045              		.loc 1 414 11 view .LVU341
+ 1046 0036 85ED000A 		vstr.32	s0, [r5]
+ARM GAS  /tmp/ccY8F0GP.s 			page 35
+
+
+ 416:../../../mod/baro/baro.c **** 
+ 1047              		.loc 1 416 1 is_stmt 1 view .LVU342
+ 1048              	.LVL85:
+ 1049              	.L40:
+ 418:../../../mod/baro/baro.c **** 
+ 1050              		.loc 1 418 1 is_stmt 0 view .LVU343
+ 1051 003a 2046     		mov	r0, r4
+ 1052 003c 03B0     		add	sp, sp, #12
+ 1053              	.LCFI21:
+ 1054              		.cfi_remember_state
+ 1055              		.cfi_def_cfa_offset 12
+ 1056              		@ sp needed
+ 1057 003e 30BD     		pop	{r4, r5, pc}
+ 1058              	.LVL86:
+ 1059              	.L41:
+ 1060              	.LCFI22:
+ 1061              		.cfi_restore_state
+ 405:../../../mod/baro/baro.c **** 	}
+ 1062              		.loc 1 405 9 view .LVU344
+ 1063 0040 0824     		movs	r4, #8
+ 1064 0042 FAE7     		b	.L40
+ 1065              		.cfi_endproc
+ 1066              	.LFE148:
+ 1068              		.section	.text.baro_init,"ax",%progbits
+ 1069              		.align	1
+ 1070              		.global	baro_init
+ 1071              		.syntax unified
+ 1072              		.thumb
+ 1073              		.thumb_func
+ 1075              	baro_init:
+ 1076              	.LVL87:
+ 1077              	.LFB144:
+ 110:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 1078              		.loc 1 110 1 is_stmt 1 view -0
+ 1079              		.cfi_startproc
+ 1080              		@ args = 0, pretend = 0, frame = 8
+ 1081              		@ frame_needed = 0, uses_anonymous_args = 0
+ 110:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 1082              		.loc 1 110 1 is_stmt 0 view .LVU346
+ 1083 0000 10B5     		push	{r4, lr}
+ 1084              	.LCFI23:
+ 1085              		.cfi_def_cfa_offset 8
+ 1086              		.cfi_offset 4, -8
+ 1087              		.cfi_offset 14, -4
+ 1088 0002 82B0     		sub	sp, sp, #8
+ 1089              	.LCFI24:
+ 1090              		.cfi_def_cfa_offset 16
+ 1091 0004 0446     		mov	r4, r0
+ 114:../../../mod/baro/baro.c **** uint8_t           baro_device_id; /* Baro device id                    */
+ 1092              		.loc 1 114 1 is_stmt 1 view .LVU347
+ 115:../../../mod/baro/baro.c **** uint8_t           baro_err_reg;   /* Contents of error register        */
+ 1093              		.loc 1 115 1 view .LVU348
+ 116:../../../mod/baro/baro.c **** float             init_temp;      /* Temperature read after init       */
+ 1094              		.loc 1 116 1 view .LVU349
+ 117:../../../mod/baro/baro.c **** 
+ 1095              		.loc 1 117 1 view .LVU350
+ 123:../../../mod/baro/baro.c **** baro_device_id = 0;
+ARM GAS  /tmp/ccY8F0GP.s 			page 36
+
+
+ 1096              		.loc 1 123 1 view .LVU351
+ 1097              	.LVL88:
+ 124:../../../mod/baro/baro.c **** baro_err_reg   = 0xFF;
+ 1098              		.loc 1 124 1 view .LVU352
+ 124:../../../mod/baro/baro.c **** baro_err_reg   = 0xFF;
+ 1099              		.loc 1 124 16 is_stmt 0 view .LVU353
+ 1100 0006 0023     		movs	r3, #0
+ 1101 0008 8DF80730 		strb	r3, [sp, #7]
+ 125:../../../mod/baro/baro.c **** init_temp      = 0;
+ 1102              		.loc 1 125 1 is_stmt 1 view .LVU354
+ 125:../../../mod/baro/baro.c **** init_temp      = 0;
+ 1103              		.loc 1 125 16 is_stmt 0 view .LVU355
+ 1104 000c FF23     		movs	r3, #255
+ 1105 000e 8DF80630 		strb	r3, [sp, #6]
+ 126:../../../mod/baro/baro.c **** 
+ 1106              		.loc 1 126 1 is_stmt 1 view .LVU356
+ 126:../../../mod/baro/baro.c **** 
+ 1107              		.loc 1 126 16 is_stmt 0 view .LVU357
+ 1108 0012 0023     		movs	r3, #0
+ 1109 0014 0093     		str	r3, [sp]	@ float
+ 134:../../../mod/baro/baro.c **** if      ( baro_status   != BARO_OK         )
+ 1110              		.loc 1 134 1 is_stmt 1 view .LVU358
+ 134:../../../mod/baro/baro.c **** if      ( baro_status   != BARO_OK         )
+ 1111              		.loc 1 134 15 is_stmt 0 view .LVU359
+ 1112 0016 0DF10700 		add	r0, sp, #7
+ 1113              	.LVL89:
+ 134:../../../mod/baro/baro.c **** if      ( baro_status   != BARO_OK         )
+ 1114              		.loc 1 134 15 view .LVU360
+ 1115 001a FFF7FEFF 		bl	baro_get_device_id
+ 1116              	.LVL90:
+ 135:../../../mod/baro/baro.c **** 	{
+ 1117              		.loc 1 135 1 is_stmt 1 view .LVU361
+ 135:../../../mod/baro/baro.c **** 	{
+ 1118              		.loc 1 135 9 is_stmt 0 view .LVU362
+ 1119 001e D0B9     		cbnz	r0, .L45
+ 139:../../../mod/baro/baro.c ****           baro_device_id != BMP388_DEVICE_ID )
+ 1120              		.loc 1 139 6 is_stmt 1 view .LVU363
+ 139:../../../mod/baro/baro.c ****           baro_device_id != BMP388_DEVICE_ID )
+ 1121              		.loc 1 139 46 is_stmt 0 view .LVU364
+ 1122 0020 9DF80730 		ldrb	r3, [sp, #7]	@ zero_extendqisi2
+ 139:../../../mod/baro/baro.c ****           baro_device_id != BMP388_DEVICE_ID )
+ 1123              		.loc 1 139 9 view .LVU365
+ 1124 0024 602B     		cmp	r3, #96
+ 1125 0026 18BF     		it	ne
+ 1126 0028 502B     		cmpne	r3, #80
+ 1127 002a 16D1     		bne	.L46
+ 146:../../../mod/baro/baro.c ****                          sizeof( baro_err_reg ), 
+ 1128              		.loc 1 146 1 is_stmt 1 view .LVU366
+ 146:../../../mod/baro/baro.c ****                          sizeof( baro_err_reg ), 
+ 1129              		.loc 1 146 15 is_stmt 0 view .LVU367
+ 1130 002c 0DF10602 		add	r2, sp, #6
+ 1131 0030 0121     		movs	r1, #1
+ 1132 0032 0220     		movs	r0, #2
+ 1133              	.LVL91:
+ 146:../../../mod/baro/baro.c ****                          sizeof( baro_err_reg ), 
+ 1134              		.loc 1 146 15 view .LVU368
+ 1135 0034 FFF7FEFF 		bl	read_regs
+ARM GAS  /tmp/ccY8F0GP.s 			page 37
+
+
+ 1136              	.LVL92:
+ 149:../../../mod/baro/baro.c **** 	{
+ 1137              		.loc 1 149 1 is_stmt 1 view .LVU369
+ 149:../../../mod/baro/baro.c **** 	{
+ 1138              		.loc 1 149 4 is_stmt 0 view .LVU370
+ 1139 0038 90B9     		cbnz	r0, .L47
+ 153:../../../mod/baro/baro.c **** 	{
+ 1140              		.loc 1 153 6 is_stmt 1 view .LVU371
+ 153:../../../mod/baro/baro.c **** 	{
+ 1141              		.loc 1 153 11 is_stmt 0 view .LVU372
+ 1142 003a 9DF80630 		ldrb	r3, [sp, #6]	@ zero_extendqisi2
+ 153:../../../mod/baro/baro.c **** 	{
+ 1143              		.loc 1 153 9 view .LVU373
+ 1144 003e 8BB9     		cbnz	r3, .L48
+ 159:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 1145              		.loc 1 159 1 is_stmt 1 view .LVU374
+ 159:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 1146              		.loc 1 159 15 is_stmt 0 view .LVU375
+ 1147 0040 FFF7FEFF 		bl	load_cal_data
+ 1148              	.LVL93:
+ 160:../../../mod/baro/baro.c **** 	{
+ 1149              		.loc 1 160 1 is_stmt 1 view .LVU376
+ 160:../../../mod/baro/baro.c **** 	{
+ 1150              		.loc 1 160 4 is_stmt 0 view .LVU377
+ 1151 0044 80B9     		cbnz	r0, .L49
+ 166:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 1152              		.loc 1 166 1 is_stmt 1 view .LVU378
+ 166:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 1153              		.loc 1 166 15 is_stmt 0 view .LVU379
+ 1154 0046 6846     		mov	r0, sp
+ 1155              	.LVL94:
+ 166:../../../mod/baro/baro.c **** if ( baro_status != BARO_OK )
+ 1156              		.loc 1 166 15 view .LVU380
+ 1157 0048 FFF7FEFF 		bl	baro_get_temp
+ 1158              	.LVL95:
+ 167:../../../mod/baro/baro.c **** 	{ 
+ 1159              		.loc 1 167 1 is_stmt 1 view .LVU381
+ 167:../../../mod/baro/baro.c **** 	{ 
+ 1160              		.loc 1 167 4 is_stmt 0 view .LVU382
+ 1161 004c 30B9     		cbnz	r0, .L44
+ 173:../../../mod/baro/baro.c **** return baro_status;
+ 1162              		.loc 1 173 1 is_stmt 1 view .LVU383
+ 173:../../../mod/baro/baro.c **** return baro_status;
+ 1163              		.loc 1 173 15 is_stmt 0 view .LVU384
+ 1164 004e 2046     		mov	r0, r4
+ 1165              	.LVL96:
+ 173:../../../mod/baro/baro.c **** return baro_status;
+ 1166              		.loc 1 173 15 view .LVU385
+ 1167 0050 FFF7FEFF 		bl	baro_config
+ 1168              	.LVL97:
+ 174:../../../mod/baro/baro.c **** 
+ 1169              		.loc 1 174 1 is_stmt 1 view .LVU386
+ 174:../../../mod/baro/baro.c **** 
+ 1170              		.loc 1 174 8 is_stmt 0 view .LVU387
+ 1171 0054 02E0     		b	.L44
+ 1172              	.L45:
+ 137:../../../mod/baro/baro.c **** 	}
+ARM GAS  /tmp/ccY8F0GP.s 			page 38
+
+
+ 1173              		.loc 1 137 9 view .LVU388
+ 1174 0056 0820     		movs	r0, #8
+ 1175              	.LVL98:
+ 137:../../../mod/baro/baro.c **** 	}
+ 1176              		.loc 1 137 9 view .LVU389
+ 1177 0058 00E0     		b	.L44
+ 1178              	.LVL99:
+ 1179              	.L46:
+ 142:../../../mod/baro/baro.c **** 	}
+ 1180              		.loc 1 142 9 view .LVU390
+ 1181 005a 0520     		movs	r0, #5
+ 1182              	.LVL100:
+ 1183              	.L44:
+ 176:../../../mod/baro/baro.c **** 
+ 1184              		.loc 1 176 1 view .LVU391
+ 1185 005c 02B0     		add	sp, sp, #8
+ 1186              	.LCFI25:
+ 1187              		.cfi_remember_state
+ 1188              		.cfi_def_cfa_offset 8
+ 1189              		@ sp needed
+ 1190 005e 10BD     		pop	{r4, pc}
+ 1191              	.LVL101:
+ 1192              	.L47:
+ 1193              	.LCFI26:
+ 1194              		.cfi_restore_state
+ 151:../../../mod/baro/baro.c **** 	}
+ 1195              		.loc 1 151 9 view .LVU392
+ 1196 0060 0820     		movs	r0, #8
+ 1197              	.LVL102:
+ 151:../../../mod/baro/baro.c **** 	}
+ 1198              		.loc 1 151 9 view .LVU393
+ 1199 0062 FBE7     		b	.L44
+ 1200              	.LVL103:
+ 1201              	.L48:
+ 155:../../../mod/baro/baro.c **** 	}
+ 1202              		.loc 1 155 9 view .LVU394
+ 1203 0064 0620     		movs	r0, #6
+ 1204              	.LVL104:
+ 155:../../../mod/baro/baro.c **** 	}
+ 1205              		.loc 1 155 9 view .LVU395
+ 1206 0066 F9E7     		b	.L44
+ 1207              	.LVL105:
+ 1208              	.L49:
+ 162:../../../mod/baro/baro.c **** 	}
+ 1209              		.loc 1 162 9 view .LVU396
+ 1210 0068 0720     		movs	r0, #7
+ 1211              	.LVL106:
+ 162:../../../mod/baro/baro.c **** 	}
+ 1212              		.loc 1 162 9 view .LVU397
+ 1213 006a F7E7     		b	.L44
+ 1214              		.cfi_endproc
+ 1215              	.LFE144:
+ 1217              		.section	.text.baro_get_pressure,"ax",%progbits
+ 1218              		.align	1
+ 1219              		.global	baro_get_pressure
+ 1220              		.syntax unified
+ 1221              		.thumb
+ARM GAS  /tmp/ccY8F0GP.s 			page 39
+
+
+ 1222              		.thumb_func
+ 1224              	baro_get_pressure:
+ 1225              	.LVL107:
+ 1226              	.LFB147:
+ 318:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 1227              		.loc 1 318 1 is_stmt 1 view -0
+ 1228              		.cfi_startproc
+ 1229              		@ args = 0, pretend = 0, frame = 8
+ 1230              		@ frame_needed = 0, uses_anonymous_args = 0
+ 318:../../../mod/baro/baro.c **** /*------------------------------------------------------------------------------
+ 1231              		.loc 1 318 1 is_stmt 0 view .LVU399
+ 1232 0000 70B5     		push	{r4, r5, r6, lr}
+ 1233              	.LCFI27:
+ 1234              		.cfi_def_cfa_offset 16
+ 1235              		.cfi_offset 4, -16
+ 1236              		.cfi_offset 5, -12
+ 1237              		.cfi_offset 6, -8
+ 1238              		.cfi_offset 14, -4
+ 1239 0002 82B0     		sub	sp, sp, #8
+ 1240              	.LCFI28:
+ 1241              		.cfi_def_cfa_offset 24
+ 1242 0004 0546     		mov	r5, r0
+ 322:../../../mod/baro/baro.c **** uint32_t    raw_pressure;      /* Pressure raw readout in uint32_t format */
+ 1243              		.loc 1 322 1 is_stmt 1 view .LVU400
+ 323:../../../mod/baro/baro.c **** float       comp_temp;         /* Compensation temperature                */
+ 1244              		.loc 1 323 1 view .LVU401
+ 324:../../../mod/baro/baro.c **** BARO_STATUS baro_status;       /* Return codes for baro API calls         */
+ 1245              		.loc 1 324 1 view .LVU402
+ 325:../../../mod/baro/baro.c **** 
+ 1246              		.loc 1 325 1 view .LVU403
+ 331:../../../mod/baro/baro.c **** comp_temp    = 0;
+ 1247              		.loc 1 331 1 view .LVU404
+ 1248              	.LVL108:
+ 332:../../../mod/baro/baro.c **** baro_status  = BARO_OK;
+ 1249              		.loc 1 332 1 view .LVU405
+ 332:../../../mod/baro/baro.c **** baro_status  = BARO_OK;
+ 1250              		.loc 1 332 14 is_stmt 0 view .LVU406
+ 1251 0006 0023     		movs	r3, #0
+ 1252 0008 0093     		str	r3, [sp]	@ float
+ 333:../../../mod/baro/baro.c **** memset( &pressure_bytes[0], 0, sizeof( pressure_bytes ) );
+ 1253              		.loc 1 333 1 is_stmt 1 view .LVU407
+ 1254              	.LVL109:
+ 334:../../../mod/baro/baro.c **** 
+ 1255              		.loc 1 334 1 view .LVU408
+ 1256 000a 0023     		movs	r3, #0
+ 1257 000c ADF80430 		strh	r3, [sp, #4]	@ movhi
+ 1258 0010 8DF80630 		strb	r3, [sp, #6]
+ 342:../../../mod/baro/baro.c ****                          sizeof( pressure_bytes ), 
+ 1259              		.loc 1 342 1 view .LVU409
+ 342:../../../mod/baro/baro.c ****                          sizeof( pressure_bytes ), 
+ 1260              		.loc 1 342 15 is_stmt 0 view .LVU410
+ 1261 0014 01AA     		add	r2, sp, #4
+ 1262 0016 0321     		movs	r1, #3
+ 1263 0018 0420     		movs	r0, #4
+ 1264              	.LVL110:
+ 342:../../../mod/baro/baro.c ****                          sizeof( pressure_bytes ), 
+ 1265              		.loc 1 342 15 view .LVU411
+ARM GAS  /tmp/ccY8F0GP.s 			page 40
+
+
+ 1266 001a FFF7FEFF 		bl	read_regs
+ 1267              	.LVL111:
+ 345:../../../mod/baro/baro.c **** 	{
+ 1268              		.loc 1 345 1 is_stmt 1 view .LVU412
+ 345:../../../mod/baro/baro.c **** 	{
+ 1269              		.loc 1 345 4 is_stmt 0 view .LVU413
+ 1270 001e A8B9     		cbnz	r0, .L53
+ 1271 0020 0646     		mov	r6, r0
+ 351:../../../mod/baro/baro.c ****                  ( (uint32_t) pressure_bytes[1] <<  8 ) |
+ 1272              		.loc 1 351 1 is_stmt 1 view .LVU414
+ 351:../../../mod/baro/baro.c ****                  ( (uint32_t) pressure_bytes[1] <<  8 ) |
+ 1273              		.loc 1 351 45 is_stmt 0 view .LVU415
+ 1274 0022 9DF80630 		ldrb	r3, [sp, #6]	@ zero_extendqisi2
+ 352:../../../mod/baro/baro.c **** 				 ( (uint32_t) pressure_bytes[0]       ) );
+ 1275              		.loc 1 352 45 view .LVU416
+ 1276 0026 9DF80540 		ldrb	r4, [sp, #5]	@ zero_extendqisi2
+ 352:../../../mod/baro/baro.c **** 				 ( (uint32_t) pressure_bytes[0]       ) );
+ 1277              		.loc 1 352 49 view .LVU417
+ 1278 002a 2402     		lsls	r4, r4, #8
+ 351:../../../mod/baro/baro.c ****                  ( (uint32_t) pressure_bytes[1] <<  8 ) |
+ 1279              		.loc 1 351 57 view .LVU418
+ 1280 002c 44EA0344 		orr	r4, r4, r3, lsl #16
+ 353:../../../mod/baro/baro.c **** 
+ 1281              		.loc 1 353 33 view .LVU419
+ 1282 0030 9DF80430 		ldrb	r3, [sp, #4]	@ zero_extendqisi2
+ 351:../../../mod/baro/baro.c ****                  ( (uint32_t) pressure_bytes[1] <<  8 ) |
+ 1283              		.loc 1 351 14 view .LVU420
+ 1284 0034 1C43     		orrs	r4, r4, r3
+ 1285              	.LVL112:
+ 356:../../../mod/baro/baro.c **** 
+ 1286              		.loc 1 356 1 is_stmt 1 view .LVU421
+ 356:../../../mod/baro/baro.c **** 
+ 1287              		.loc 1 356 17 is_stmt 0 view .LVU422
+ 1288 0036 6846     		mov	r0, sp
+ 1289              	.LVL113:
+ 356:../../../mod/baro/baro.c **** 
+ 1290              		.loc 1 356 17 view .LVU423
+ 1291 0038 FFF7FEFF 		bl	baro_get_temp
+ 1292              	.LVL114:
+ 359:../../../mod/baro/baro.c **** 
+ 1293              		.loc 1 359 1 is_stmt 1 view .LVU424
+ 359:../../../mod/baro/baro.c **** 
+ 1294              		.loc 1 359 17 is_stmt 0 view .LVU425
+ 1295 003c 2046     		mov	r0, r4
+ 1296 003e FFF7FEFF 		bl	press_compensate
+ 1297              	.LVL115:
+ 359:../../../mod/baro/baro.c **** 
+ 1298              		.loc 1 359 15 view .LVU426
+ 1299 0042 85ED000A 		vstr.32	s0, [r5]
+ 361:../../../mod/baro/baro.c **** } /* baro_get_pressure */
+ 1300              		.loc 1 361 1 is_stmt 1 view .LVU427
+ 1301              	.LVL116:
+ 1302              	.L52:
+ 362:../../../mod/baro/baro.c **** 
+ 1303              		.loc 1 362 1 is_stmt 0 view .LVU428
+ 1304 0046 3046     		mov	r0, r6
+ 1305 0048 02B0     		add	sp, sp, #8
+ARM GAS  /tmp/ccY8F0GP.s 			page 41
+
+
+ 1306              	.LCFI29:
+ 1307              		.cfi_remember_state
+ 1308              		.cfi_def_cfa_offset 16
+ 1309              		@ sp needed
+ 1310 004a 70BD     		pop	{r4, r5, r6, pc}
+ 1311              	.LVL117:
+ 1312              	.L53:
+ 1313              	.LCFI30:
+ 1314              		.cfi_restore_state
+ 347:../../../mod/baro/baro.c **** 	}
+ 1315              		.loc 1 347 9 view .LVU429
+ 1316 004c 0826     		movs	r6, #8
+ 1317 004e FAE7     		b	.L52
+ 1318              		.cfi_endproc
+ 1319              	.LFE147:
+ 1321              		.section	.text.baro_get_altitude,"ax",%progbits
+ 1322              		.align	1
+ 1323              		.global	baro_get_altitude
+ 1324              		.syntax unified
+ 1325              		.thumb
+ 1326              		.thumb_func
+ 1328              	baro_get_altitude:
+ 1329              	.LFB149:
+ 434:../../../mod/baro/baro.c **** return BARO_OK;
+ 1330              		.loc 1 434 1 is_stmt 1 view -0
+ 1331              		.cfi_startproc
+ 1332              		@ args = 0, pretend = 0, frame = 0
+ 1333              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1334              		@ link register save eliminated.
+ 435:../../../mod/baro/baro.c **** } /* baro_get_altitude */
+ 1335              		.loc 1 435 1 view .LVU431
+ 436:../../../mod/baro/baro.c **** 
+ 1336              		.loc 1 436 1 is_stmt 0 view .LVU432
+ 1337 0000 0020     		movs	r0, #0
+ 1338 0002 7047     		bx	lr
+ 1339              		.cfi_endproc
+ 1340              	.LFE149:
+ 1342              		.section	.bss.baro_cal_data,"aw",%nobits
+ 1343              		.align	2
+ 1346              	baro_cal_data:
+ 1347 0000 00000000 		.space	60
+ 1347      00000000 
+ 1347      00000000 
+ 1347      00000000 
+ 1347      00000000 
+ 1348              		.section	.bss.baro_configuration,"aw",%nobits
+ 1349              		.align	2
+ 1352              	baro_configuration:
+ 1353 0000 00000000 		.space	6
+ 1353      0000
+ 1354              		.text
+ 1355              	.Letext0:
+ 1356              		.file 2 "/usr/lib/gcc/arm-none-eabi/12.2.0/include/stddef.h"
+ 1357              		.file 3 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 1358              		.file 4 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 1359              		.file 5 "../../../lib/Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h750xx.h"
+ 1360              		.file 6 "../../../lib/Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_def.h"
+ARM GAS  /tmp/ccY8F0GP.s 			page 42
+
+
+ 1361              		.file 7 "../../../lib/Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_dma.h"
+ 1362              		.file 8 "../../../lib/Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_i2c.h"
+ 1363              		.file 9 "../../../mod/baro/baro.h"
+ 1364              		.file 10 "/usr/arm-none-eabi/include/math.h"
+ 1365              		.file 11 "/usr/arm-none-eabi/include/string.h"
+ 1366              		.file 12 "../../../lib/sdr_pin_defines_A0002.h"
+ARM GAS  /tmp/ccY8F0GP.s 			page 43
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 baro.c
+     /tmp/ccY8F0GP.s:20     .text.bytes_to_uint16_t:0000000000000000 $t
+     /tmp/ccY8F0GP.s:25     .text.bytes_to_uint16_t:0000000000000000 bytes_to_uint16_t
+     /tmp/ccY8F0GP.s:43     .text.bytes_to_int16_t:0000000000000000 $t
+     /tmp/ccY8F0GP.s:48     .text.bytes_to_int16_t:0000000000000000 bytes_to_int16_t
+     /tmp/ccY8F0GP.s:69     .text.read_regs:0000000000000000 $t
+     /tmp/ccY8F0GP.s:74     .text.read_regs:0000000000000000 read_regs
+     /tmp/ccY8F0GP.s:131    .text.read_regs:0000000000000024 $d
+     /tmp/ccY8F0GP.s:136    .text.load_cal_data:0000000000000000 $t
+     /tmp/ccY8F0GP.s:141    .text.load_cal_data:0000000000000000 load_cal_data
+     /tmp/ccY8F0GP.s:439    .text.load_cal_data:0000000000000218 $d
+     /tmp/ccY8F0GP.s:1346   .bss.baro_cal_data:0000000000000000 baro_cal_data
+     /tmp/ccY8F0GP.s:456    .text.write_reg:0000000000000000 $t
+     /tmp/ccY8F0GP.s:461    .text.write_reg:0000000000000000 write_reg
+     /tmp/ccY8F0GP.s:516    .text.write_reg:000000000000002c $d
+     /tmp/ccY8F0GP.s:521    .text.press_compensate:0000000000000000 $t
+     /tmp/ccY8F0GP.s:526    .text.press_compensate:0000000000000000 press_compensate
+     /tmp/ccY8F0GP.s:701    .text.press_compensate:00000000000000e0 $d
+     /tmp/ccY8F0GP.s:706    .text.temp_compensate:0000000000000000 $t
+     /tmp/ccY8F0GP.s:711    .text.temp_compensate:0000000000000000 temp_compensate
+     /tmp/ccY8F0GP.s:776    .text.temp_compensate:0000000000000040 $d
+     /tmp/ccY8F0GP.s:781    .text.baro_config:0000000000000000 $t
+     /tmp/ccY8F0GP.s:787    .text.baro_config:0000000000000000 baro_config
+     /tmp/ccY8F0GP.s:938    .text.baro_config:0000000000000068 $d
+     /tmp/ccY8F0GP.s:1352   .bss.baro_configuration:0000000000000000 baro_configuration
+     /tmp/ccY8F0GP.s:943    .text.baro_get_device_id:0000000000000000 $t
+     /tmp/ccY8F0GP.s:949    .text.baro_get_device_id:0000000000000000 baro_get_device_id
+     /tmp/ccY8F0GP.s:979    .text.baro_get_temp:0000000000000000 $t
+     /tmp/ccY8F0GP.s:985    .text.baro_get_temp:0000000000000000 baro_get_temp
+     /tmp/ccY8F0GP.s:1069   .text.baro_init:0000000000000000 $t
+     /tmp/ccY8F0GP.s:1075   .text.baro_init:0000000000000000 baro_init
+     /tmp/ccY8F0GP.s:1218   .text.baro_get_pressure:0000000000000000 $t
+     /tmp/ccY8F0GP.s:1224   .text.baro_get_pressure:0000000000000000 baro_get_pressure
+     /tmp/ccY8F0GP.s:1322   .text.baro_get_altitude:0000000000000000 $t
+     /tmp/ccY8F0GP.s:1328   .text.baro_get_altitude:0000000000000000 baro_get_altitude
+     /tmp/ccY8F0GP.s:1343   .bss.baro_cal_data:0000000000000000 $d
+     /tmp/ccY8F0GP.s:1349   .bss.baro_configuration:0000000000000000 $d
+
+UNDEFINED SYMBOLS
+HAL_I2C_Mem_Read
+hi2c1
+HAL_I2C_Mem_Write
+powf
