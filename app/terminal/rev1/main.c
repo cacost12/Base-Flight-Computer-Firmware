@@ -14,7 +14,7 @@
  Standard Includes                                                                     
 ------------------------------------------------------------------------------*/
 #include <stdbool.h>
-#include "sdr_pin_defines_A0002.h"
+#include "sdr_pin_defines_A0007.h"
 
 
 /*------------------------------------------------------------------------------
@@ -24,7 +24,6 @@
 /* Application Layer */
 #include "main.h"
 #include "init.h"
-#include "fatfs.h"
 
 /* Hardware modules */
 #include "baro.h"
@@ -32,7 +31,6 @@
 #include "commands.h"
 #include "flash.h"
 #include "ignition.h"
-#include "imu.h"
 #include "led.h"
 #include "sensor.h"
 #include "usb.h"
@@ -42,8 +40,6 @@
  MCU Peripheral Handlers                                                         
 ------------------------------------------------------------------------------*/
 I2C_HandleTypeDef  hi2c1;   /* Baro sensor    */
-I2C_HandleTypeDef  hi2c2;   /* IMU and GPS    */
-SD_HandleTypeDef   hsd1;    /* SD Card        */
 SPI_HandleTypeDef  hspi2;   /* External flash */
 TIM_HandleTypeDef  htim4;   /* Buzzer Timer   */
 UART_HandleTypeDef huart6;  /* USB            */
@@ -75,10 +71,6 @@ uint8_t       flash_buffer[ DEF_FLASH_BUFFER_SIZE ]; /* Flash data buffer     */
 BARO_STATUS   baro_status;                     /* Status of baro sensor       */
 BARO_CONFIG   baro_configs;                    /* Baro sensor config settings */
 
-/* IMU */
-IMU_STATUS    imu_status;                      /* IMU return codes            */
-IMU_CONFIG    imu_configs;                     /* IMU config settings         */
-
 /* Ignition/Parachute Ejection */
 IGN_STATUS    ign_status;                      /* Ignition status code        */
 
@@ -93,11 +85,8 @@ PeriphCommonClock_Config(); /* Common Peripherals clock                       */
 GPIO_Init();                /* GPIO                                           */
 USB_UART_Init();            /* USB UART                                       */
 Baro_I2C_Init();            /* Barometric pressure sensor                     */
-IMU_GPS_I2C_Init();         /* IMU and GPS                                    */
 FLASH_SPI_Init();           /* External flash chip                            */
 BUZZER_TIM_Init();          /* Buzzer                                         */
-SD_SDMMC_Init();            /* SD card SDMMC interface                        */
-MX_FATFS_Init();            /* FatFs file system middleware                   */
 
 
 /*------------------------------------------------------------------------------
@@ -121,27 +110,11 @@ baro_configs.temp_OSR_setting  = BARO_TEMP_OSR_X1;
 baro_configs.ODR_setting       = BARO_ODR_50HZ;
 baro_configs.IIR_setting       = BARO_IIR_COEF_0;
 
-/* IMU Configuration */
-imu_configs.sensor_enable      = IMU_ENABLE_GYRO_ACC_TEMP;
-imu_configs.acc_odr            = IMU_ODR_100;
-imu_configs.gyro_odr           = IMU_ODR_100;
-imu_configs.mag_odr            = MAG_ODR_10HZ;
-imu_configs.acc_filter         = IMU_FILTER_NORM_AVG4;
-imu_configs.gyro_filter        = IMU_FILTER_NORM_AVG4;
-imu_configs.acc_filter_mode    = IMU_FILTER_FILTER_MODE;
-imu_configs.gyro_filter_mode   = IMU_FILTER_FILTER_MODE;
-imu_configs.acc_range          = IMU_ACC_RANGE_16G;
-imu_configs.gyro_range         = IMU_GYRO_RANGE_500;
-imu_configs.mag_op_mode        = MAG_NORMAL_MODE;
-imu_configs.mag_xy_repititions = 9; /* BMM150 Regular Preset Recomendation */
-imu_configs.mag_z_repititions  = 15;
-
 /* Module return codes */
 baro_status                    = BARO_OK;
 command_status                 = USB_OK;
 flash_status                   = FLASH_OK;
 ign_status                     = IGN_OK;
-imu_status                     = IMU_OK;
 
 
 /*------------------------------------------------------------------------------
@@ -161,13 +134,6 @@ sensor_init();
 /* Barometric pressure sensor */
 baro_status = baro_init( &baro_configs );
 if ( baro_status != BARO_OK )
-	{
-	Error_Handler();
-	}
-
-/* IMU */
-imu_status = imu_init( &imu_configs );
-if ( imu_status != IMU_OK )
 	{
 	Error_Handler();
 	}
