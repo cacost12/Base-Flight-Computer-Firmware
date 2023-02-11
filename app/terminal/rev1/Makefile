@@ -143,7 +143,7 @@ C_DEFS =          \
 -DUSE_HAL_DRIVER  \
 -DSTM32H750xx     \
 -DFLIGHT_COMPUTER \
--DA0002_REV1      \
+-DA0002_REV2      \
 -DTERMINAL       
 
 
