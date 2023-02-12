@@ -139,7 +139,7 @@ if ( baro_status != BARO_OK )
 
 /* Indicate Successful MCU and Peripheral Hardware Setup */
 led_set_color( LED_GREEN );
-buzzer_beep( 5000 );
+
 
 /*------------------------------------------------------------------------------
  Event Loop                                                                  
