@@ -49,7 +49,6 @@ $(MOD_DIR)/buzzer/buzzer.c                                            \
 $(MOD_DIR)/commands/commands.c                                        \
 $(MOD_DIR)/flash/flash.c                                              \
 $(MOD_DIR)/ignition/ignition.c                                        \
-$(MOD_DIR)/imu/imu.c                                                  \
 $(MOD_DIR)/led/led.c                                                  \
 $(MOD_DIR)/sensor/sensor.c                                            \
 $(MOD_DIR)/usb/usb.c                                                  \
@@ -78,18 +77,10 @@ $(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_uart.c      \
 $(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_uart_ex.c   \
 $(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi.c       \
 $(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi_ex.c    \
-$(LIB_DIR)/FATFS/App/fatfs.c                                          \
-$(LIB_DIR)/FATFS/Target/bsp_driver_sd.c                               \
-$(LIB_DIR)/FATFS/Target/sd_diskio.c                                   \
-$(LIB_DIR)/FATFS/Target/fatfs_platform.c                              \
 $(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_sdmmc.c      \
 $(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_delayblock.c \
 $(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sd.c        \
 $(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_sd_ex.c     \
-$(LIB_DIR)/Middlewares/Third_Party/FatFs/src/diskio.c                 \
-$(LIB_DIR)/Middlewares/Third_Party/FatFs/src/ff.c                     \
-$(LIB_DIR)/Middlewares/Third_Party/FatFs/src/ff_gen_drv.c             \
-$(LIB_DIR)/Middlewares/Third_Party/FatFs/src/option/syscall.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -139,11 +130,11 @@ MCU = $(CPU) -mthumb $(FPU) $(FLOAT-ABI)
 AS_DEFS = 
 
 # C defines
-C_DEFS =          \
--DUSE_HAL_DRIVER  \
--DSTM32H750xx     \
--DFLIGHT_COMPUTER \
--DA0002_REV2
+C_DEFS =               \
+-DUSE_HAL_DRIVER       \
+-DSTM32H750xx          \
+-DFLIGHT_COMPUTER_LITE \
+-DA0007_REV1
 
 # AS includes
 AS_INCLUDES = 
@@ -159,17 +150,13 @@ C_INCLUDES =                                           \
 -I$(MOD_DIR)/commands                                  \
 -I$(MOD_DIR)/flash                                     \
 -I$(MOD_DIR)/ignition                                  \
--I$(MOD_DIR)/imu                                       \
 -I$(MOD_DIR)/led                                       \
 -I$(MOD_DIR)/sensor                                    \
 -I$(MOD_DIR)/usb                                       \
 -I$(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Inc          \
 -I$(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy   \
 -I$(LIB_DIR)/Drivers/CMSIS/Device/ST/STM32H7xx/Include \
--I$(LIB_DIR)/Drivers/CMSIS/Include                     \
--I$(LIB_DIR)/FATFS/Target                              \
--I$(LIB_DIR)/FATFS/App                                 \
--I$(LIB_DIR)/Middlewares/Third_Party/FatFs/src
+-I$(LIB_DIR)/Drivers/CMSIS/Include                     
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections

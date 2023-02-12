@@ -1,3 +1,4 @@
 # Build Directories
 app/blink/build/*
 app/terminal/rev1/*
+app/flight/data-logger/rev1/*

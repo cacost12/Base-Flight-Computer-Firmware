@@ -42,13 +42,20 @@ extern "C" {
 /* Timeouts */
 #ifndef SDR_DEBUG
 	#define HAL_DEFAULT_TIMEOUT    ( 10  ) /* Default timeout for polling 
-	                                          operations                     */
+	                                          operations                      */
 	#define HAL_SENSOR_TIMEOUT     ( 40  ) /* Timeout for sensor polling      */
 #else
 	/* Disable timeouts when debugging */
 	#define HAL_DEFAULT_TIMEOUT    ( 0xFFFFFFFF )  
 	#define HAL_SENSOR_TIMEOUT     ( 0xFFFFFFFF ) 
 #endif /* SDR_DEBUG */
+
+/* Sensor Data Frame Size */
+#if   defined( FLIGHT_COMPUTER      )
+	#define SENSOR_FRAME_SIZE      ( 32 ) 
+#elif defined( FLIGHT_COMPUTER_LITE )
+	#define SENSOR_FRAME_SIZE      ( 12 )
+#endif
 
 
 /*------------------------------------------------------------------------------
