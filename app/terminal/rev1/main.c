@@ -81,12 +81,11 @@ IGN_STATUS    ign_status;                      /* Ignition status code        */
 HAL_Init();                 /* Reset peripherals, initialize flash interface 
                                and Systick.                                   */
 SystemClock_Config();       /* System clock                                   */
-//PeriphCommonClock_Config(); /* Common Peripherals clock                       */
 GPIO_Init();                /* GPIO                                           */
 USB_UART_Init();            /* USB UART                                       */
 Baro_I2C_Init();            /* Barometric pressure sensor                     */
 FLASH_SPI_Init();           /* External flash chip                            */
-//BUZZER_TIM_Init();          /* Buzzer                                         */
+BUZZER_TIM_Init();          /* Buzzer                                         */
 
 
 /*------------------------------------------------------------------------------
@@ -140,7 +139,7 @@ if ( baro_status != BARO_OK )
 
 /* Indicate Successful MCU and Peripheral Hardware Setup */
 led_set_color( LED_GREEN );
-
+buzzer_beep( 5000 );
 
 /*------------------------------------------------------------------------------
  Event Loop                                                                  
