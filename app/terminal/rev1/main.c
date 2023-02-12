@@ -63,9 +63,9 @@ uint8_t       subcommand_code;                 /* Subcommand opcode           */
 USB_STATUS    command_status;                  /* Status of USB HAL           */
 
 /* External Flash */
-//FLASH_STATUS  flash_status;                    /* Status of flash driver      */
-//HFLASH_BUFFER flash_handle;                    /* Flash API buffer handle     */
-//uint8_t       flash_buffer[ DEF_FLASH_BUFFER_SIZE ]; /* Flash data buffer     */
+FLASH_STATUS  flash_status;                    /* Status of flash driver      */
+HFLASH_BUFFER flash_handle;                    /* Flash API buffer handle     */
+uint8_t       flash_buffer[ DEF_FLASH_BUFFER_SIZE ]; /* Flash data buffer     */
 
 /* Barometric Pressure Sensor */
 //BARO_STATUS   baro_status;                     /* Status of baro sensor       */
@@ -85,7 +85,7 @@ SystemClock_Config();       /* System clock                                   */
 GPIO_Init();                /* GPIO                                           */
 USB_UART_Init();            /* USB UART                                       */
 //Baro_I2C_Init();            /* Barometric pressure sensor                     */
-//FLASH_SPI_Init();           /* External flash chip                            */
+FLASH_SPI_Init();           /* External flash chip                            */
 //BUZZER_TIM_Init();          /* Buzzer                                         */
 
 
@@ -94,13 +94,13 @@ USB_UART_Init();            /* USB UART                                       */
 ------------------------------------------------------------------------------*/
 
 /* Flash Configuration */
-//flash_handle.write_protected   = FLASH_WP_WRITE_ENABLED;
-//flash_handle.num_bytes         = 0;
-//flash_handle.address           = 0;
-//flash_handle.pbuffer           = &flash_buffer[0];
-//flash_handle.status_register   = 0xFF;
-//flash_handle.bpl_bits          = FLASH_BPL_NONE;
-//flash_handle.bpl_write_protect = FLASH_BPL_READ_WRITE;
+flash_handle.write_protected   = FLASH_WP_WRITE_ENABLED;
+flash_handle.num_bytes         = 0;
+flash_handle.address           = 0;
+flash_handle.pbuffer           = &flash_buffer[0];
+flash_handle.status_register   = 0xFF;
+flash_handle.bpl_bits          = FLASH_BPL_NONE;
+flash_handle.bpl_write_protect = FLASH_BPL_READ_WRITE;
 
 /* Baro Configuration */
 //baro_configs.enable            = BARO_PRESS_TEMP_ENABLED;
@@ -113,7 +113,7 @@ USB_UART_Init();            /* USB UART                                       */
 /* Module return codes */
 //baro_status                    = BARO_OK;
 command_status                 = USB_OK;
-//flash_status                   = FLASH_OK;
+flash_status                   = FLASH_OK;
 ign_status                     = IGN_OK;
 
 
@@ -122,11 +122,11 @@ ign_status                     = IGN_OK;
 ------------------------------------------------------------------------------*/
 
 /* Flash Chip */
-//flash_status = flash_init( &flash_handle );
-//if ( flash_status != FLASH_OK )
-	//{
-//	Error_Handler();
-	//}
+flash_status = flash_init( &flash_handle );
+if ( flash_status != FLASH_OK )
+	{
+	Error_Handler();
+	}
 
 /* Sensor Module - Sets up the sensor sizes/offsets table */
 //sensor_init();
@@ -222,38 +222,38 @@ while (1)
 				} /* IGNITE_OP */
 
 			/*------------------------ Flash Command --------------------------*/
-//			case FLASH_OP:
-	//			{
+			case FLASH_OP:
+				{
 				/* Recieve flash subcommand over USB */
-//				command_status = usb_receive( &subcommand_code         , 
- //                                             sizeof( subcommand_code ),
-  //                                            HAL_DEFAULT_TIMEOUT );
+				command_status = usb_receive( &subcommand_code         , 
+                                              sizeof( subcommand_code ),
+                                              HAL_DEFAULT_TIMEOUT );
 
 				/* Execute subcommand */
-			//	if ( command_status == USB_OK )
-		//			{
-			//		flash_status = flash_cmd_execute( subcommand_code,
-			 //                                         &flash_handle );
-					//}
-//				else
-	//				{
+				if ( command_status == USB_OK )
+					{
+					flash_status = flash_cmd_execute( subcommand_code,
+			                                          &flash_handle );
+					}
+				else
+					{
 					/* Subcommand code not recieved */
-		//			Error_Handler();
-			//		}
+					Error_Handler();
+					}
 
 				/* Transmit status code to PC */
-				//command_status = usb_transmit( &flash_status         , 
-     //                                          sizeof( flash_status ),
-      //                                         HAL_DEFAULT_TIMEOUT );
+				command_status = usb_transmit( &flash_status         , 
+                                               sizeof( flash_status ),
+                                               HAL_DEFAULT_TIMEOUT );
 
-//				if ( command_status != USB_OK )
-	//				{
+				if ( command_status != USB_OK )
+					{
 					/* Status not transmitted properly */
-		//			Error_Handler();
-			//		}
+					Error_Handler();
+					}
 
-//				break;
-	//			}
+				break;
+				}
 
 			default:
 				{

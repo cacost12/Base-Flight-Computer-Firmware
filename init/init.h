@@ -36,7 +36,7 @@ void SystemClock_Config      ( void );      /* clock configuration            */
 void GPIO_Init               ( void );      /* GPIO configurations            */
 void USB_UART_Init           ( void );      /* USB UART configuration         */
 //void Baro_I2C_Init           ( void );      /* Baro sensor I2C configuration  */
-//void FLASH_SPI_Init          ( void );      /* FLASH SPI configuration        */
+void FLASH_SPI_Init          ( void );      /* FLASH SPI configuration        */
 //void BUZZER_TIM_Init         ( void );      /* Buzzer Timer configuration     */
 
 
