@@ -68,8 +68,8 @@ HFLASH_BUFFER flash_handle;                    /* Flash API buffer handle     */
 uint8_t       flash_buffer[ DEF_FLASH_BUFFER_SIZE ]; /* Flash data buffer     */
 
 /* Barometric Pressure Sensor */
-//BARO_STATUS   baro_status;                     /* Status of baro sensor       */
-//BARO_CONFIG   baro_configs;                    /* Baro sensor config settings */
+BARO_STATUS   baro_status;                     /* Status of baro sensor       */
+BARO_CONFIG   baro_configs;                    /* Baro sensor config settings */
 
 /* Ignition/Parachute Ejection */
 IGN_STATUS    ign_status;                      /* Ignition status code        */
@@ -84,7 +84,7 @@ SystemClock_Config();       /* System clock                                   */
 //PeriphCommonClock_Config(); /* Common Peripherals clock                       */
 GPIO_Init();                /* GPIO                                           */
 USB_UART_Init();            /* USB UART                                       */
-//Baro_I2C_Init();            /* Barometric pressure sensor                     */
+Baro_I2C_Init();            /* Barometric pressure sensor                     */
 FLASH_SPI_Init();           /* External flash chip                            */
 //BUZZER_TIM_Init();          /* Buzzer                                         */
 
@@ -103,15 +103,15 @@ flash_handle.bpl_bits          = FLASH_BPL_NONE;
 flash_handle.bpl_write_protect = FLASH_BPL_READ_WRITE;
 
 /* Baro Configuration */
-//baro_configs.enable            = BARO_PRESS_TEMP_ENABLED;
-//baro_configs.mode              = BARO_NORMAL_MODE;
-//baro_configs.press_OSR_setting = BARO_PRESS_OSR_X8;
-//baro_configs.temp_OSR_setting  = BARO_TEMP_OSR_X1;
-//baro_configs.ODR_setting       = BARO_ODR_50HZ;
-//baro_configs.IIR_setting       = BARO_IIR_COEF_0;
+baro_configs.enable            = BARO_PRESS_TEMP_ENABLED;
+baro_configs.mode              = BARO_NORMAL_MODE;
+baro_configs.press_OSR_setting = BARO_PRESS_OSR_X8;
+baro_configs.temp_OSR_setting  = BARO_TEMP_OSR_X1;
+baro_configs.ODR_setting       = BARO_ODR_50HZ;
+baro_configs.IIR_setting       = BARO_IIR_COEF_0;
 
 /* Module return codes */
-//baro_status                    = BARO_OK;
+baro_status                    = BARO_OK;
 command_status                 = USB_OK;
 flash_status                   = FLASH_OK;
 ign_status                     = IGN_OK;
@@ -132,11 +132,11 @@ if ( flash_status != FLASH_OK )
 //sensor_init();
 
 /* Barometric pressure sensor */
-//baro_status = baro_init( &baro_configs );
-//if ( baro_status != BARO_OK )
-	//{
-//	Error_Handler();
-	//}
+baro_status = baro_init( &baro_configs );
+if ( baro_status != BARO_OK )
+	{
+	Error_Handler();
+	}
 
 /* Indicate Successful MCU and Peripheral Hardware Setup */
 led_set_color( LED_GREEN );
