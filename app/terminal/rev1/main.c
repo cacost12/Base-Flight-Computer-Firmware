@@ -129,7 +129,7 @@ if ( flash_status != FLASH_OK )
 	}
 
 /* Sensor Module - Sets up the sensor sizes/offsets table */
-//sensor_init();
+sensor_init();
 
 /* Barometric pressure sensor */
 baro_status = baro_init( &baro_configs );
@@ -174,24 +174,24 @@ while (1)
 				}
 
 			/*------------------------ Sensor Command ------------------------*/
-		//	case SENSOR_OP:
-			//	{
+			case SENSOR_OP:
+				{
 				/* Receive sensor subcommand  */
-				//command_status = usb_receive( &subcommand_code         ,
-				 //                             sizeof( subcommand_code ),
-				  //                            HAL_DEFAULT_TIMEOUT );
+				command_status = usb_receive( &subcommand_code         ,
+				                              sizeof( subcommand_code ),
+				                              HAL_DEFAULT_TIMEOUT );
 
-//				if ( command_status == USB_OK )
-//					{
+				if ( command_status == USB_OK )
+					{
 					/* Execute sensor subcommand */
-	//				sensor_cmd_execute( subcommand_code );
-		//			}
-			//	else
-				//	{
-					//Error_Handler();
-					//}
-//				break;
-	//			}
+					sensor_cmd_execute( subcommand_code );
+					}
+				else
+					{
+					Error_Handler();
+					}
+				break;
+				}
 
 			/*------------------------ Ignite Command -------------------------*/
 			case IGNITE_OP:
