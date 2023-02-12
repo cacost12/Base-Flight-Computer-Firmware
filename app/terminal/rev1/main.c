@@ -114,7 +114,7 @@ USB_UART_Init();            /* USB UART                                       */
 //baro_status                    = BARO_OK;
 command_status                 = USB_OK;
 //flash_status                   = FLASH_OK;
-//ign_status                     = IGN_OK;
+ign_status                     = IGN_OK;
 
 
 /*------------------------------------------------------------------------------

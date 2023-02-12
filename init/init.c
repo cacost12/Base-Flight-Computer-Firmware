@@ -178,6 +178,9 @@ GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* GPIO Ports Clock Enable */
 __HAL_RCC_GPIOA_CLK_ENABLE();
 __HAL_RCC_GPIOC_CLK_ENABLE();
+__HAL_RCC_GPIOD_CLK_ENABLE();
+__HAL_RCC_GPIOE_CLK_ENABLE();
+__HAL_RCC_GPIOH_CLK_ENABLE();
 
 /*--------------------------- LED MCU PINS -----------------------------------*/
 
@@ -195,7 +198,43 @@ GPIO_InitStruct.Pin   = STATUS_B_PIN |
 GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_OD;
 GPIO_InitStruct.Pull  = GPIO_NOPULL;
 GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-HAL_GPIO_Init( STATUS_GPIO_PORT, &GPIO_InitStruct);
+HAL_GPIO_Init( STATUS_GPIO_PORT, &GPIO_InitStruct );
+
+/*------------------------- IGNITION MCU Pins --------------------------------*/
+
+/* Drogue Deployment Pin */
+HAL_GPIO_WritePin( DROGUE_GPIO_PORT, DROGUE_PIN, GPIO_PIN_RESET );
+GPIO_InitStruct.Pin   = DROGUE_PIN;
+GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+GPIO_InitStruct.Pull  = GPIO_NOPULL;
+GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+HAL_GPIO_Init( DROGUE_GPIO_PORT, &GPIO_InitStruct );
+
+/* Main Deployment Pin */
+HAL_GPIO_WritePin( MAIN_GPIO_PORT, MAIN_PIN, GPIO_PIN_RESET );
+GPIO_InitStruct.Pin   = MAIN_PIN;
+GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
+GPIO_InitStruct.Pull  = GPIO_NOPULL;
+GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+HAL_GPIO_Init( MAIN_GPIO_PORT, &GPIO_InitStruct );
+
+/* Switch Continuity Pin */
+GPIO_InitStruct.Pin  = SWITCH_PIN;
+GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+GPIO_InitStruct.Pull = GPIO_NOPULL;
+HAL_GPIO_Init( SWITCH_GPIO_PORT, &GPIO_InitStruct );
+
+/* Main Continuity Pin */
+GPIO_InitStruct.Pin  = MAIN_CONT_PIN;
+GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+GPIO_InitStruct.Pull = GPIO_NOPULL;
+HAL_GPIO_Init( MAIN_CONT_GPIO_PORT, &GPIO_InitStruct );
+
+/* Drogue Continuity Pin */
+GPIO_InitStruct.Pin  = DROGUE_CONT_PIN;
+GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+GPIO_InitStruct.Pull = GPIO_NOPULL;
+HAL_GPIO_Init( DROGUE_CONT_GPIO_PORT, &GPIO_InitStruct );
 
 } /* GPIO_Init */
 
