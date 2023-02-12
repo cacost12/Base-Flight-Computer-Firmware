@@ -40,10 +40,10 @@
 
 /*******************************************************************************
 *                                                                              *
-* PROCEDURE:                                                                   * 
+* PROCEDURE:                                                                   *
 *       SystemClock_Config                                                     *
 *                                                                              *
-* DESCRIPTION:                                                                 * 
+* DESCRIPTION:                                                                 *
 *       Initializes the microcontroller clock. Enables peripheral clocks and   *
 *       sets prescalers                                                        *
 *                                                                              *
@@ -67,6 +67,9 @@ while( !__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY) )
 	{
 	/* Wait for PWR_FLAG_VOSRDY flag */
 	}
+
+/* Macro to configure the PLL clock source */
+__HAL_RCC_PLL_PLLSOURCE_CONFIG(RCC_PLLSOURCE_HSE);
 
 /* Initializes the RCC Oscillators according to the specified parameters 
    in the RCC_OscInitTypeDef structure. */
@@ -111,6 +114,53 @@ if ( HAL_RCC_ClockConfig( &RCC_ClkInitStruct, FLASH_LATENCY_1 ) != HAL_OK )
 /*******************************************************************************
 *                                                                              *
 * PROCEDURE:                                                                   *
+*       USB_UART_Init                                                          *
+*                                                                              *
+* DESCRIPTION:                                                                 *
+*		Initializes the microcontroller uart interface for use with the flight *
+*       computer USB port                                                      *
+*                                                                              *
+*******************************************************************************/
+void USB_UART_Init
+	(
+	void
+	)
+{
+
+/* UART Initialization Settings */
+huart6.Instance                    = USART6;
+huart6.Init.BaudRate               = 921600;
+huart6.Init.WordLength             = UART_WORDLENGTH_8B;
+huart6.Init.StopBits               = UART_STOPBITS_1;
+huart6.Init.Parity                 = UART_PARITY_NONE;
+huart6.Init.Mode                   = UART_MODE_TX_RX;
+huart6.Init.HwFlowCtl              = UART_HWCONTROL_NONE;
+huart6.Init.OverSampling           = UART_OVERSAMPLING_16;
+huart6.Init.OneBitSampling         = UART_ONE_BIT_SAMPLE_DISABLE;
+huart6.Init.ClockPrescaler         = UART_PRESCALER_DIV1;
+huart6.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+if ( HAL_UART_Init( &huart6 ) != HAL_OK )
+	{
+	Error_Handler();
+	}
+if ( HAL_UARTEx_SetTxFifoThreshold( &huart6, UART_TXFIFO_THRESHOLD_1_8 ) != HAL_OK )
+	{
+	Error_Handler();
+	}
+if ( HAL_UARTEx_SetRxFifoThreshold( &huart6, UART_RXFIFO_THRESHOLD_1_8 ) != HAL_OK )
+	{
+	Error_Handler();
+	}
+if ( HAL_UARTEx_DisableFifoMode( &huart6 ) != HAL_OK )
+	{
+	Error_Handler();
+	}
+} /* USB_UART_Init */
+ 
+
+/*******************************************************************************
+*                                                                              *
+* PROCEDURE:                                                                   *
 *       GPIO_Init                                                              * 
 *                                                                              *
 * DESCRIPTION:                                                                 * 
@@ -127,6 +177,7 @@ GPIO_InitTypeDef GPIO_InitStruct = {0};
 
 /* GPIO Ports Clock Enable */
 __HAL_RCC_GPIOA_CLK_ENABLE();
+__HAL_RCC_GPIOC_CLK_ENABLE();
 
 /*--------------------------- LED MCU PINS -----------------------------------*/
 
