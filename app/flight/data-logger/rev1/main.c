@@ -279,7 +279,7 @@ while (1)
 				}
 
 			/* Delay for stability */
-			HAL_Delay( 15 );
+			//HAL_Delay( 15 );
 			}
 		}
 
