@@ -78,8 +78,8 @@ uint32_t      start_time;
 uint32_t      time;
 
 /* Ground pressure */
-float         ground_pressure;
-float         temp_pressure;
+float         ground_pressure = 0;
+float         temp_pressure = 0;
 
 
 /*------------------------------------------------------------------------------
@@ -248,7 +248,7 @@ while (1)
 				}
 			ground_pressure += temp_pressure;
 			}
-		ground_pressure = temp_pressure/10;
+		ground_pressure /= 10;
 
 		/* Erase flash chip */
 		flash_status = flash_erase( &flash_handle );
