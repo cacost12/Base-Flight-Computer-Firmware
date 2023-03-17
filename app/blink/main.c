@@ -21,6 +21,7 @@ Project Includes
 
 /* Pin definitions and main prototypes */
 #include "sdr_pin_defines_A0007.h"
+#include "sdr_error.h"
 #include "main.h"
 #include "init.h"
 
@@ -29,17 +30,7 @@ Project Includes
 
 
 /*------------------------------------------------------------------------------
-Global Variables                                                                  
-------------------------------------------------------------------------------*/
-
-
-/*------------------------------------------------------------------------------
-Typedefs                                                                  
-------------------------------------------------------------------------------*/
-
-
-/*------------------------------------------------------------------------------
-Application entry point                                                      
+ Application entry point                                                      
 ------------------------------------------------------------------------------*/
 int main
 	(
@@ -47,16 +38,12 @@ int main
 	)
 {
 /*------------------------------------------------------------------------------
-Local Variables
+ MCU Initialization                                                                  
 ------------------------------------------------------------------------------*/
-
-
-/*------------------------------------------------------------------------------
-MCU Initialization                                                                  
-------------------------------------------------------------------------------*/
-HAL_Init();
+HAL_Init          ();
 SystemClock_Config();
-GPIO_Init();
+GPIO_Init         ();
+
 
 /*------------------------------------------------------------------------------
 Event Loop                                                                  
@@ -83,44 +70,6 @@ while (1)
 	}
 
 } /* main.c */
-
-
-/*******************************************************************************
-*                                                                              *
-* PROCEDURE:                                                                   *
-*       Error_Handler                                                          * 
-*                                                                              *
-* DESCRIPTION:                                                                 * 
-* 		This function is executed in case of error occurrence                  *
-*                                                                              *
-*******************************************************************************/
-void Error_Handler
-	(
-	void
-	)
-{
-__disable_irq();
-while (1)
-	{
-	}
-} /* Error_Handler */
-
-#ifdef  USE_FULL_ASSERT
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed
-	(
-	uint8_t *file, 
-	uint32_t line
-	)
-{
-} /* assert_failed */
-#endif /* USE_FULL_ASSERT */
 
 
 /*******************************************************************************

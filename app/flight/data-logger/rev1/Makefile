@@ -16,6 +16,7 @@ TARGET = data-logger
 
 # debug build?
 DEBUG = 1
+
 # optimization
 OPT = -Og
 
@@ -36,6 +37,10 @@ MOD_DIR = ../../../../mod
 # MCU Initialization Directory
 INIT_DIR = ../../../../init
 
+# Utilities directory
+UTIL_DIR = $(LIB_DIR)/util
+
+
 ################################################################
 # source
 ################################################################
@@ -44,6 +49,7 @@ INIT_DIR = ../../../../init
 C_SOURCES =                                                           \
 main.c                                                                \
 $(INIT_DIR)/init.c                                                    \
+$(UTIL_DIR)/sdr_error.c                                               \
 $(MOD_DIR)/baro/baro.c                                                \
 $(MOD_DIR)/buzzer/buzzer.c                                            \
 $(MOD_DIR)/commands/commands.c                                        \
@@ -144,6 +150,7 @@ C_INCLUDES =                                           \
 -I.                                                    \
 -I$(LIB_DIR)                                           \
 -I$(INIT_DIR)                                          \
+-I$(UTIL_DIR)                                          \
 -I$(INIT_DIR)/config/Inc                               \
 -I$(MOD_DIR)/baro                                      \
 -I$(MOD_DIR)/buzzer                                    \
@@ -156,7 +163,7 @@ C_INCLUDES =                                           \
 -I$(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Inc          \
 -I$(LIB_DIR)/Drivers/STM32H7xx_HAL_Driver/Inc/Legacy   \
 -I$(LIB_DIR)/Drivers/CMSIS/Device/ST/STM32H7xx/Include \
--I$(LIB_DIR)/Drivers/CMSIS/Include                     
+-I$(LIB_DIR)/Drivers/CMSIS/Include
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections

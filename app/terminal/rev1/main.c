@@ -15,6 +15,7 @@
 ------------------------------------------------------------------------------*/
 #include <stdbool.h>
 #include "sdr_pin_defines_A0007.h"
+#include "sdr_error.h"
 
 
 /*------------------------------------------------------------------------------
@@ -78,14 +79,14 @@ IGN_STATUS    ign_status;                      /* Ignition status code        */
 /*------------------------------------------------------------------------------
  MCU/HAL Initialization                                                                  
 ------------------------------------------------------------------------------*/
-HAL_Init();                 /* Reset peripherals, initialize flash interface 
+HAL_Init          ();       /* Reset peripherals, initialize flash interface 
                                and Systick.                                   */
 SystemClock_Config();       /* System clock                                   */
-GPIO_Init();                /* GPIO                                           */
-USB_UART_Init();            /* USB UART                                       */
-Baro_I2C_Init();            /* Barometric pressure sensor                     */
-FLASH_SPI_Init();           /* External flash chip                            */
-BUZZER_TIM_Init();          /* Buzzer                                         */
+GPIO_Init         ();       /* GPIO                                           */
+USB_UART_Init     ();       /* USB UART                                       */
+Baro_I2C_Init     ();       /* Barometric pressure sensor                     */
+FLASH_SPI_Init    ();       /* External flash chip                            */
+BUZZER_TIM_Init   ();       /* Buzzer                                         */
 
 
 /*------------------------------------------------------------------------------
@@ -124,7 +125,7 @@ ign_status                     = IGN_OK;
 flash_status = flash_init( &flash_handle );
 if ( flash_status != FLASH_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_FLASH_INIT_ERROR );
 	}
 
 /* Sensor Module - Sets up the sensor sizes/offsets table */
@@ -134,7 +135,7 @@ sensor_init();
 baro_status = baro_init( &baro_configs );
 if ( baro_status != BARO_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_BARO_INIT_ERROR );
 	}
 
 /* Indicate Successful MCU and Peripheral Hardware Setup */
@@ -187,7 +188,7 @@ while (1)
 					}
 				else
 					{
-					Error_Handler();
+					Error_Handler( ERROR_SENSOR_CMD_ERROR );
 					}
 				break;
 				}
@@ -214,7 +215,7 @@ while (1)
 				else
 					{
 					/* Error: no subcommand recieved */
-				    Error_Handler();
+				    Error_Handler( ERROR_IGN_CMD_ERROR );
 				    }
 
 				break; 
@@ -237,7 +238,7 @@ while (1)
 				else
 					{
 					/* Subcommand code not recieved */
-					Error_Handler();
+					Error_Handler( ERROR_FLASH_CMD_ERROR );
 					}
 
 				/* Transmit status code to PC */
@@ -248,7 +249,7 @@ while (1)
 				if ( command_status != USB_OK )
 					{
 					/* Status not transmitted properly */
-					Error_Handler();
+					Error_Handler( ERROR_FLASH_CMD_ERROR );
 					}
 
 				break;
@@ -268,39 +269,6 @@ while (1)
 
 	}
 } /* main */
-
-
-/*******************************************************************************
-*                                                                              *
-* PROCEDURE:                                                                   *
-*       Error_Handler                                                          * 
-*                                                                              *
-* DESCRIPTION:                                                                 * 
-*       This function is executed in case of error occurrence                  *
-*                                                                              *
-*******************************************************************************/
-void Error_Handler(void)
-{
-    __disable_irq();
-	led_set_color( LED_RED );
-    while (1)
-    {
-    }
-}
-
-#ifdef  USE_FULL_ASSERT
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
-
-}
-#endif /* USE_FULL_ASSERT */
 
 
 /*******************************************************************************

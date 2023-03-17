@@ -31,7 +31,12 @@ Macros
 /*------------------------------------------------------------------------------
 Exported functions prototypes                                             
 ------------------------------------------------------------------------------*/
-void Error_Handler(void);
+
+void HAL_TIM_MspPostInit
+	(
+	TIM_HandleTypeDef *htim
+	);
+
 
 #ifdef __cplusplus
 }

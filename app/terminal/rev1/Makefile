@@ -15,6 +15,7 @@ TARGET = terminal
 
 # debug build?
 DEBUG = 1
+
 # optimization
 OPT = -Og
 
@@ -35,6 +36,9 @@ MOD_DIR = ../../../mod
 # MCU Init Code Directory
 INIT_DIR = ../../../init
 
+# Utilities Directory
+UTIL_DIR = $(LIB_DIR)/util
+
 
 ################################################################
 # source
@@ -44,6 +48,7 @@ INIT_DIR = ../../../init
 C_SOURCES =                                                           \
 main.c                                                                \
 $(INIT_DIR)/init.c                                                    \
+$(UTIL_DIR)/sdr_error.c                                               \
 $(MOD_DIR)/baro/baro.c                                                \
 $(MOD_DIR)/buzzer/buzzer.c                                            \
 $(MOD_DIR)/commands/commands.c                                        \
@@ -146,6 +151,7 @@ C_INCLUDES =                                           \
 -I.                                                    \
 -I$(LIB_DIR)                                           \
 -I$(INIT_DIR)                                          \
+-I$(UTIL_DIR)                                          \
 -I$(INIT_DIR)/config/Inc                               \
 -I$(MOD_DIR)/baro                                      \
 -I$(MOD_DIR)/buzzer                                    \

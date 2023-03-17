@@ -17,9 +17,10 @@
 /*------------------------------------------------------------------------------
  Project Includes                                                               
 ------------------------------------------------------------------------------*/
-#include "sdr_pin_defines_A0007.h"
 #include "main.h"
 #include "init.h"
+#include "sdr_pin_defines_A0007.h"
+#include "sdr_error.h"
 
 
 /*------------------------------------------------------------------------------
@@ -58,18 +59,18 @@ RCC_OscInitTypeDef RCC_OscInitStruct = {0};
 RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
 /* Supply configuration update enable */
-HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
+HAL_PWREx_ConfigSupply( PWR_LDO_SUPPLY );
 
 /* Configure the main internal regulator output voltage */
-__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+__HAL_PWR_VOLTAGESCALING_CONFIG( PWR_REGULATOR_VOLTAGE_SCALE3 );
 
-while( !__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY) ) 
+while( !__HAL_PWR_GET_FLAG( PWR_FLAG_VOSRDY ) ) 
 	{
 	/* Wait for PWR_FLAG_VOSRDY flag */
 	}
 
 /* Macro to configure the PLL clock source */
-__HAL_RCC_PLL_PLLSOURCE_CONFIG(RCC_PLLSOURCE_HSE);
+__HAL_RCC_PLL_PLLSOURCE_CONFIG( RCC_PLLSOURCE_HSE );
 
 /* Initializes the RCC Oscillators according to the specified parameters 
    in the RCC_OscInitTypeDef structure. */
@@ -87,7 +88,7 @@ RCC_OscInitStruct.PLL.PLLVCOSEL  = RCC_PLL1VCOWIDE;
 RCC_OscInitStruct.PLL.PLLFRACN   = 0;
 if ( HAL_RCC_OscConfig( &RCC_OscInitStruct ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_SYSCLOCK_CONFIG_ERROR );
 	}
 
 /* Initializes the CPU, AHB and APB buses clocks */
@@ -106,7 +107,7 @@ RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV1;
 RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV1;
 if ( HAL_RCC_ClockConfig( &RCC_ClkInitStruct, FLASH_LATENCY_2 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_SYSCLOCK_CONFIG_ERROR );
 	}
 } /* SystemClock_Config */
 
@@ -138,17 +139,17 @@ hi2c1.Init.GeneralCallMode  = I2C_GENERALCALL_DISABLE;
 hi2c1.Init.NoStretchMode    = I2C_NOSTRETCH_DISABLE;
 if ( HAL_I2C_Init( &hi2c1 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_BARO_I2C_INIT_ERROR );
 	}
 /* Configure Analogue filter */
 if ( HAL_I2CEx_ConfigAnalogFilter( &hi2c1, I2C_ANALOGFILTER_ENABLE ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_BARO_I2C_INIT_ERROR );
 	}
 /* Configure Digital filter */
-if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+if ( HAL_I2CEx_ConfigDigitalFilter( &hi2c1, 0 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_BARO_I2C_INIT_ERROR );
 	}
 } /* BARO_I2C_Init */
 
@@ -198,22 +199,22 @@ htim4.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
 htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 if ( HAL_TIM_Base_Init( &htim4 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_BUZZER_TIM_INIT_ERROR );
 	}
 sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
 if ( HAL_TIM_ConfigClockSource( &htim4, &sClockSourceConfig ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_BUZZER_TIM_INIT_ERROR );
 	}
 if ( HAL_TIM_PWM_Init( &htim4 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_BUZZER_TIM_INIT_ERROR );
 	}
 sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
 sMasterConfig.MasterSlaveMode     = TIM_MASTERSLAVEMODE_DISABLE;
 if ( HAL_TIMEx_MasterConfigSynchronization( &htim4, &sMasterConfig ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_BUZZER_TIM_INIT_ERROR );
 	}
 sConfigOC.OCMode     = TIM_OCMODE_PWM1;
 sConfigOC.Pulse      = pwm_pulse_cnt;
@@ -221,7 +222,7 @@ sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
 sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
 if ( HAL_TIM_PWM_ConfigChannel( &htim4, &sConfigOC, BUZZ_TIM_CHANNEL ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_BUZZER_TIM_INIT_ERROR );
 	}
 HAL_TIM_MspPostInit( &htim4 );
 
@@ -268,7 +269,7 @@ hspi2.Init.MasterKeepIOState          = SPI_MASTER_KEEP_IO_STATE_DISABLE;
 hspi2.Init.IOSwap                     = SPI_IO_SWAP_DISABLE;
 if ( HAL_SPI_Init( &hspi2 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_FLASH_SPI_INIT_ERROR );
 	}
 } /* FLASH_SPI_Init */
 
@@ -303,19 +304,19 @@ huart6.Init.ClockPrescaler         = UART_PRESCALER_DIV1;
 huart6.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 if ( HAL_UART_Init( &huart6 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_USB_UART_INIT_ERROR );
 	}
 if ( HAL_UARTEx_SetTxFifoThreshold( &huart6, UART_TXFIFO_THRESHOLD_1_8 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_USB_UART_INIT_ERROR );
 	}
 if ( HAL_UARTEx_SetRxFifoThreshold( &huart6, UART_RXFIFO_THRESHOLD_1_8 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_USB_UART_INIT_ERROR );
 	}
 if ( HAL_UARTEx_DisableFifoMode( &huart6 ) != HAL_OK )
 	{
-	Error_Handler();
+	Error_Handler( ERROR_USB_UART_INIT_ERROR );
 	}
 } /* USB_UART_Init */
  
